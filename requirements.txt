@@ -1,5 +1,0 @@
-requests
-websocket-client
-pandas
-flask
-matplotlib
