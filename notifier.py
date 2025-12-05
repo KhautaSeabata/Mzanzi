@@ -149,3 +149,34 @@ if __name__ == "__main__":
     print("\n📡 Testing Telegram connection...")
     if send_test_alert():
         print("✅ Test alert sent successfully!")
+else:
+    print("❌ Failed to send test alert")
+
+# Example signal
+print("\n📊 Sending example signal...")
+example_signal = {
+    'symbol': 'XAUUSD',
+    'timeframe': '15M',
+    'pattern': 'Order Block',
+    'direction': 'bullish',
+    'price': 2650.50,
+    'confidence': 85
+}
+
+if send_forex_alert(example_signal):
+    print("✅ Example signal sent successfully!")
+else:
+    print("❌ Failed to send example signal")
+
+# Optional: Start Flask server
+print("\n" + "=" * 50)
+print("🌐 Starting Flask webhook server...")
+print("💡 To use with frontend, uncomment the lines below:")
+print("   app = create_flask_app()")
+print("   if app:")
+print("       app.run(host='0.0.0.0', port=5000, debug=True)")
+
+# Uncomment to start Flask server:
+# app = create_flask_app()
+# if app:
+#     app.run(host='0.0.0.0', port=5000, debug=True)
