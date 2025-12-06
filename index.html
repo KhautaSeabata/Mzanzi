@@ -324,6 +324,12 @@
             font-weight: 600;
             font-size: 12px;
         }
+        .info-value.green {
+            color: #30D158;
+        }
+        .info-value.red {
+            color: #FF453A;
+        }
         
         .chart-canvas-container {
             flex: 1;
@@ -426,6 +432,74 @@
             margin-bottom: 12px;
         }
         
+        .signal-card {
+            background: #1C1C1E;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #007AFF;
+        }
+        .signal-card.bullish {
+            border-left-color: #30D158;
+        }
+        .signal-card.bearish {
+            border-left-color: #FF453A;
+        }
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+        .signal-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .signal-symbol {
+            font-size: 12px;
+            color: #8E8E93;
+        }
+        .signal-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .signal-badge.bullish {
+            background: rgba(48, 209, 88, 0.2);
+            color: #30D158;
+        }
+        .signal-badge.bearish {
+            background: rgba(255, 69, 58, 0.2);
+            color: #FF453A;
+        }
+        .signal-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .signal-info-item {
+            background: #2C2C2E;
+            padding: 8px;
+            border-radius: 8px;
+        }
+        .signal-info-label {
+            font-size: 10px;
+            color: #8E8E93;
+            margin-bottom: 4px;
+        }
+        .signal-info-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .signal-time {
+            font-size: 11px;
+            color: #636366;
+            margin-top: 10px;
+        }
+        
         /* Settings Page */
         .settings-section {
             background: #1C1C1E;
@@ -484,6 +558,12 @@
         }
         .status-disconnected {
             background: #FF453A;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #8E8E93;
         }
     </style>
 </head>
@@ -632,29 +712,29 @@
                     <div class="chart-info-bar">
                         <div class="info-item">
                             <div class="info-label">Pair</div>
-                            <div class="info-value">US 100</div>
+                            <div class="info-value" id="symbolName1">US 100</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Price</div>
-                            <div class="info-value">--</div>
+                            <div class="info-value" id="price1">--</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Change</div>
-                            <div class="info-value">--</div>
+                            <div class="info-value" id="change1">--</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">H/L</div>
-                            <div class="info-value">--</div>
+                            <div class="info-value" id="highlow1">--</div>
                         </div>
                     </div>
                     <div class="chart-toolbar">
-                        <select class="toolbar-select">
+                        <select class="toolbar-select" id="symbol1">
                             <option value="US100" selected>US 100</option>
                             <option value="XAUUSD">GOLD</option>
                             <option value="EURUSD">EUR/USD</option>
                             <option value="GBPUSD">GBP/USD</option>
                         </select>
-                        <select class="toolbar-select">
+                        <select class="toolbar-select" id="timeframe1">
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
@@ -664,8 +744,8 @@
                     <div class="chart-canvas-container">
                         <canvas id="canvas1"></canvas>
                         <div class="zoom-controls">
-                            <button class="zoom-btn">+</button>
-                            <button class="zoom-btn">−</button>
+                            <button class="zoom-btn" onclick="zoom(1, 'in')">+</button>
+                            <button class="zoom-btn" onclick="zoom(1, 'out')">−</button>
                         </div>
                     </div>
                 </div>
@@ -681,12 +761,12 @@
             <div class="signals-header">
                 <div class="signals-title">SMC Signals</div>
                 <div class="signals-controls">
-                    <button class="signal-filter-btn active">All</button>
-                    <button class="signal-filter-btn">Bullish</button>
-                    <button class="signal-filter-btn">Bearish</button>
+                    <button class="signal-filter-btn active" onclick="filterSignals('all')">All</button>
+                    <button class="signal-filter-btn" onclick="filterSignals('bullish')">Bullish</button>
+                    <button class="signal-filter-btn" onclick="filterSignals('bearish')">Bearish</button>
                 </div>
             </div>
-            <div class="signals-list">
+            <div class="signals-list" id="signalsList">
                 <div class="no-signals">
                     <div class="no-signals-icon">📊</div>
                     <div>No signals detected yet</div>
@@ -700,27 +780,33 @@
             <div class="settings-section">
                 <div class="settings-item">
                     <div class="settings-label">SMC Analysis</div>
-                    <div class="toggle-switch active">
+                    <div class="toggle-switch active" onclick="toggleSetting(this, 'smc')">
                         <div class="toggle-thumb"></div>
                     </div>
                 </div>
                 <div class="settings-item">
                     <div class="settings-label">Show Order Blocks</div>
-                    <div class="toggle-switch active">
+                    <div class="toggle-switch active" onclick="toggleSetting(this, 'ob')">
                         <div class="toggle-thumb"></div>
                     </div>
                 </div>
                 <div class="settings-item">
                     <div class="settings-label">Show FVG</div>
-                    <div class="toggle-switch active">
+                    <div class="toggle-switch active" onclick="toggleSetting(this, 'fvg')">
                         <div class="toggle-thumb"></div>
                     </div>
                 </div>
                 <div class="settings-item">
                     <div class="settings-label">Sound Alerts</div>
-                    <div class="toggle-switch active">
+                    <div class="toggle-switch active" onclick="toggleSetting(this, 'sound')">
                         <div class="toggle-thumb"></div>
                     </div>
+                </div>
+            </div>
+            <div class="settings-section" style="margin-top: 20px;">
+                <div class="settings-item">
+                    <div class="settings-label">Clear All Signals</div>
+                    <button class="auth-btn" onclick="clearAllSignals()" style="width: auto; padding: 8px 16px; margin: 0; font-size: 12px;">Clear</button>
                 </div>
             </div>
         </div>
@@ -743,30 +829,65 @@
     </div>
 
     <script>
-        // ============ AUTHENTICATION ============
-        const db = {};
+        // ============ FIREBASE CONFIGURATION ============
+        const FIREBASE_URL = 'https://mzanzifx-default-rtdb.firebaseio.com';
+        
+        // ============ AUTHENTICATION SYSTEM ============
         let currentUser = null;
         let forgotStep = 1;
-
+        
+        // Firebase User Management
+        async function saveUserToFirebase(email, userData) {
+            try {
+                const safeEmail = email.replace(/\./g, '_').replace(/[@#$\[\]]/g, '_');
+                const response = await fetch(`${FIREBASE_URL}/users/${safeEmail}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                return response.ok;
+            } catch (e) {
+                console.error('Error saving user:', e);
+                return false;
+            }
+        }
+        
+        async function getUserFromFirebase(email) {
+            try {
+                const safeEmail = email.replace(/\./g, '_').replace(/[@#$\[\]]/g, '_');
+                const response = await fetch(`${FIREBASE_URL}/users/${safeEmail}.json`);
+                return await response.json();
+            } catch (e) {
+                console.error('Error getting user:', e);
+                return null;
+            }
+        }
+        
+        // UI Helper Functions
         function showPage(pageId) {
             document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
-            document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
+            hideMessages();
         }
-
+        
         function showMessage(id, text) {
             const el = document.getElementById(id);
             el.textContent = text;
             el.style.display = 'block';
         }
-
+        
         function hideMessages() {
             document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
         }
-
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
+        
+        // Registration Handler
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             hideMessages();
+            
+            const submitBtn = this.querySelector('.auth-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Account...';
             
             const firstName = document.getElementById('regFirstName').value.trim();
             const lastName = document.getElementById('regLastName').value.trim();
@@ -774,116 +895,181 @@
             const phone = document.getElementById('regPhone').value.trim();
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regConfirmPassword').value;
-
+            
             if (password !== confirmPassword) {
                 showMessage('registerError', 'Passwords do not match!');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
                 return;
             }
-
+            
             if (password.length < 8) {
                 showMessage('registerError', 'Password must be at least 8 characters!');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
                 return;
             }
-
-            if (db[email]) {
-                showMessage('registerError', 'Email already registered!');
-                return;
-            }
-
-            db[email] = { firstName, lastName, email, phone, password };
-            showMessage('registerSuccess', 'Account created! Redirecting...');
             
-            setTimeout(() => {
-                this.reset();
-                showPage('loginPage');
-            }, 2000);
+            const existingUser = await getUserFromFirebase(email);
+            if (existingUser) {
+                showMessage('registerError', 'Email already registered!');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
+                return;
+            }
+            
+            const userData = {
+                firstName,
+                lastName,
+                email,
+                phone,
+                password,
+                createdAt: Date.now(),
+                balance: 10000
+            };
+            
+            const saved = await saveUserToFirebase(email, userData);
+            
+            if (saved) {
+                showMessage('registerSuccess', 'Account created successfully! Redirecting...');
+                setTimeout(() => {
+                    this.reset();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Account';
+                    showPage('loginPage');
+                }, 2000);
+            } else {
+                showMessage('registerError', 'Error creating account. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
+            }
         });
-
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        
+        // Login Handler
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             hideMessages();
+            
+            const submitBtn = this.querySelector('.auth-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing In...';
             
             const email = document.getElementById('loginEmail').value.trim().toLowerCase();
             const password = document.getElementById('loginPassword').value;
-
-            if (!db[email]) {
+            
+            const user = await getUserFromFirebase(email);
+            
+            if (!user) {
                 showMessage('loginError', 'Email not found!');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
                 return;
             }
-
-            if (db[email].password !== password) {
+            
+            if (user.password !== password) {
                 showMessage('loginError', 'Incorrect password!');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
                 return;
             }
-
-            currentUser = db[email];
+            
+            currentUser = user;
             document.getElementById('userNameDisplay').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+            document.getElementById('appContainer').querySelector('.account-balance').textContent = 
+                `${currentUser.balance ? currentUser.balance.toLocaleString() : '10,000'}.00`;
+            
             document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
             document.getElementById('appContainer').classList.add('active');
             
-            // Initialize charts after login
-            setTimeout(() => initializeCharts(), 300);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+            
+            // Load user signals and initialize charts
+            setTimeout(() => {
+                initializeCharts();
+                loadSignalsFromFirebase();
+            }, 300);
         });
-
-        document.getElementById('forgotForm').addEventListener('submit', function(e) {
+        
+        // Forgot Password Handler
+        document.getElementById('forgotForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             hideMessages();
             
+            const submitBtn = document.getElementById('forgotBtn');
+            submitBtn.disabled = true;
+            
             const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
-
+            
             if (forgotStep === 1) {
-                if (!db[email]) {
+                submitBtn.textContent = 'Verifying...';
+                const user = await getUserFromFirebase(email);
+                
+                if (!user) {
                     showMessage('forgotError', 'Email not found!');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Continue';
                     return;
                 }
-
+                
                 document.getElementById('resetFields').style.display = 'block';
-                document.getElementById('forgotBtn').textContent = 'Reset Password';
+                submitBtn.textContent = 'Reset Password';
                 showMessage('forgotSuccess', 'Email verified! Enter new password.');
                 forgotStep = 2;
+                submitBtn.disabled = false;
             } else {
+                submitBtn.textContent = 'Resetting...';
                 const newPassword = document.getElementById('forgotNewPassword').value;
                 const confirmPassword = document.getElementById('forgotConfirmPassword').value;
-
+                
                 if (newPassword !== confirmPassword) {
                     showMessage('forgotError', 'Passwords do not match!');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Reset Password';
                     return;
                 }
-
+                
                 if (newPassword.length < 8) {
                     showMessage('forgotError', 'Password must be at least 8 characters!');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Reset Password';
                     return;
                 }
-
-                db[email].password = newPassword;
-                showMessage('forgotSuccess', 'Password reset! Redirecting...');
+                
+                const user = await getUserFromFirebase(email);
+                user.password = newPassword;
+                await saveUserToFirebase(email, user);
+                
+                showMessage('forgotSuccess', 'Password reset successfully! Redirecting...');
                 
                 setTimeout(() => {
                     this.reset();
                     document.getElementById('resetFields').style.display = 'none';
-                    document.getElementById('forgotBtn').textContent = 'Continue';
+                    submitBtn.textContent = 'Continue';
                     forgotStep = 1;
+                    submitBtn.disabled = false;
                     showPage('loginPage');
                 }, 2000);
             }
         });
-
-        document.getElementById('signupLink').addEventListener('click', function(e) {
+        
+        // Navigation Links
+        document.getElementById('signupLink').addEventListener('click', (e) => {
             e.preventDefault();
             showPage('registerPage');
         });
-
-        document.getElementById('loginLink').addEventListener('click', function(e) {
+        
+        document.getElementById('loginLink').addEventListener('click', (e) => {
             e.preventDefault();
             showPage('loginPage');
         });
-
-        document.getElementById('forgotLink').addEventListener('click', function(e) {
+        
+        document.getElementById('forgotLink').addEventListener('click', (e) => {
             e.preventDefault();
             showPage('forgotPage');
         });
-
-        document.getElementById('backToLoginLink').addEventListener('click', function(e) {
+        
+        document.getElementById('backToLoginLink').addEventListener('click', (e) => {
             e.preventDefault();
             document.getElementById('forgotForm').reset();
             document.getElementById('resetFields').style.display = 'none';
@@ -891,7 +1077,8 @@
             forgotStep = 1;
             showPage('loginPage');
         });
-
+        
+        // Logout Handler
         document.getElementById('logoutBtn').addEventListener('click', function() {
             if (confirm('Are you sure you want to logout?')) {
                 stopAllCharts();
@@ -901,51 +1088,47 @@
                 document.getElementById('loginForm').reset();
             }
         });
-
+        
         // ============ CHART SYSTEM ============
-        const FIREBASE_URL = 'https://alerts-83c9b-default-rtdb.firebaseio.com';
         const SYMBOL_CONFIG = {
             'US100': { name: 'US 100', base: 21500, apiSymbol: 'US100' },
             'XAUUSD': { name: 'GOLD', base: 2650, apiSymbol: 'frxXAUUSD' },
             'EURUSD': { name: 'EUR/USD', base: 1.0850, apiSymbol: 'frxEURUSD' },
-            'GBPUSD': { name: 'GBP/USD', base: 1.2650, apiSymbol: 'frxGBPUSD' },
-            'AUDUSD': { name: 'AUD/USD', base: 0.6550, apiSymbol: 'frxAUDUSD' },
-            'AUDCAD': { name: 'AUD/CAD', base: 0.9150, apiSymbol: 'frxAUDCAD' }
+            'GBPUSD': { name: 'GBP/USD', base: 1.2650, apiSymbol: 'frxGBPUSD' }
         };
-
+        
         let charts = {};
         let analysisEnabled = true;
         let allSignals = [];
         let signalFilter = 'all';
-
+        
         class ChartManager {
             constructor(id) {
                 this.id = id;
                 this.canvas = document.getElementById(`canvas${id}`);
                 this.ctx = this.canvas.getContext('2d');
                 this.data = [];
-                this.ws = null;
                 this.symbol = 'US100';
                 this.timeframe = 300;
                 this.zoom = 80;
                 this.running = false;
+                this.lastSignalTime = 0;
                 
                 this.resizeCanvas();
                 this.startSimulation();
             }
-
+            
             resizeCanvas() {
                 const container = this.canvas.parentElement;
                 this.canvas.width = container.clientWidth;
                 this.canvas.height = container.clientHeight;
             }
-
+            
             startSimulation() {
                 this.running = true;
                 const config = SYMBOL_CONFIG[this.symbol];
                 let price = config.base;
                 
-                // Generate initial data
                 const now = Date.now();
                 for (let i = 100; i >= 0; i--) {
                     const time = now - (i * this.timeframe * 1000);
@@ -968,7 +1151,6 @@
                 this.draw();
                 this.updateInfo();
                 
-                // Update periodically
                 this.interval = setInterval(() => {
                     if (this.running) {
                         const last = this.data[this.data.length - 1];
@@ -988,6 +1170,11 @@
                                 c: newPrice
                             });
                             if (this.data.length > 200) this.data.shift();
+                            
+                            // Generate SMC signal randomly
+                            if (analysisEnabled && Math.random() > 0.95) {
+                                this.generateSignal();
+                            }
                         } else {
                             last.c = newPrice;
                             last.h = Math.max(last.h, newPrice);
@@ -999,7 +1186,94 @@
                     }
                 }, 2000);
             }
-
+            
+            generateSignal() {
+                const now = Date.now();
+                if (now - this.lastSignalTime < 300000) return; // 5 min cooldown
+                
+                const patterns = [
+                    'Bullish Order Block',
+                    'Bearish Order Block',
+                    'Bullish FVG',
+                    'Bearish FVG',
+                    'Bullish BOS',
+                    'Bearish BOS',
+                    'Bullish CHoCH',
+                    'Bearish CHoCH'
+                ];
+                
+                const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+                const bias = pattern.includes('Bullish') ? 'bullish' : 'bearish';
+                const current = this.data[this.data.length - 1];
+                const atr = this.calculateATR();
+                
+                let entry = current.c;
+                let tp1, tp2, tp3, sl;
+                
+                if (bias === 'bullish') {
+                    tp1 = entry + (atr * 1.5);
+                    tp2 = entry + (atr * 2.5);
+                    tp3 = entry + (atr * 3.5);
+                    sl = entry - (atr * 1.0);
+                } else {
+                    tp1 = entry - (atr * 1.5);
+                    tp2 = entry - (atr * 2.5);
+                    tp3 = entry - (atr * 3.5);
+                    sl = entry + (atr * 1.0);
+                }
+                
+                const rr = Math.abs((tp1 - entry) / (entry - sl));
+                const confidence = Math.floor(60 + Math.random() * 30);
+                
+                const signal = {
+                    id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    name: pattern,
+                    bias: bias,
+                    symbol: SYMBOL_CONFIG[this.symbol].name,
+                    timeframe: this.getTimeframeLabel(),
+                    entry: entry.toFixed(2),
+                    tp1: tp1.toFixed(2),
+                    tp2: tp2.toFixed(2),
+                    tp3: tp3.toFixed(2),
+                    sl: sl.toFixed(2),
+                    rr: rr.toFixed(2),
+                    confidence: confidence,
+                    timestamp: Date.now(),
+                    userId: currentUser ? currentUser.email : 'guest'
+                };
+                
+                this.lastSignalTime = now;
+                addSignal(signal);
+            }
+            
+            calculateATR() {
+                if (this.data.length < 15) return 0.01;
+                
+                let atrSum = 0;
+                for (let i = this.data.length - 14; i < this.data.length; i++) {
+                    const current = this.data[i];
+                    const prev = this.data[i - 1];
+                    const tr = Math.max(
+                        current.h - current.l,
+                        Math.abs(current.h - prev.c),
+                        Math.abs(current.l - prev.c)
+                    );
+                    atrSum += tr;
+                }
+                
+                return atrSum / 14;
+            }
+            
+            getTimeframeLabel() {
+                const labels = {
+                    300: '5M',
+                    900: '15M',
+                    1800: '30M',
+                    3600: '1H'
+                };
+                return labels[this.timeframe] || '5M';
+            }
+            
             draw() {
                 if (!this.data.length) return;
                 
@@ -1069,7 +1343,7 @@
                     this.ctx.fillText(price.toFixed(2), this.canvas.width - padding.right + 5, y + 3);
                 }
             }
-
+            
             updateInfo() {
                 if (!this.data.length) return;
                 
@@ -1078,41 +1352,248 @@
                 const change = current.c - first.o;
                 const changePercent = (change / first.o) * 100;
                 
-                const priceEl = document.querySelector(`#chart${this.id} .info-value`);
-                if (priceEl && priceEl.parentElement.querySelector('.info-label').textContent === 'Price') {
-                    priceEl.textContent = current.c.toFixed(2);
-                }
+                const prices = this.data.flatMap(c => [c.h, c.l]);
+                const high = Math.max(...prices);
+                const low = Math.min(...prices);
                 
-                const changeEl = document.querySelectorAll(`#chart${this.id} .info-value`)[2];
-                if (changeEl) {
-                    changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
-                    changeEl.className = `info-value ${changePercent >= 0 ? 'green' : 'red'}`;
-                }
+                document.getElementById(`price${this.id}`).textContent = current.c.toFixed(2);
+                
+                const changeEl = document.getElementById(`change${this.id}`);
+                changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+                changeEl.className = `info-value ${changePercent >= 0 ? 'green' : 'red'}`;
+                
+                document.getElementById(`highlow${this.id}`).textContent = 
+                    `${high.toFixed(2)}/${low.toFixed(2)}`;
             }
-
+            
             stop() {
                 this.running = false;
                 if (this.interval) clearInterval(this.interval);
             }
         }
-
+        
         function initializeCharts() {
             charts[1] = new ChartManager(1);
             document.getElementById('connectionStatus').className = 'status-indicator status-connected';
         }
-
+        
         function startAllCharts() {
             if (!charts[1]) initializeCharts();
             charts[1].running = true;
             document.getElementById('connectionStatus').className = 'status-indicator status-connected';
         }
-
+        
         function stopAllCharts() {
             if (charts[1]) charts[1].stop();
             document.getElementById('connectionStatus').className = 'status-indicator status-disconnected';
         }
-
-        // Bottom Navigation
+        
+        function zoom(id, dir) {
+            const chart = charts[id];
+            if (!chart) return;
+            if (dir === 'in') {
+                chart.zoom = Math.max(20, chart.zoom - 10);
+            } else {
+                chart.zoom = Math.min(150, chart.zoom + 10);
+            }
+            chart.draw();
+        }
+        
+        // ============ SIGNAL MANAGEMENT ============
+        
+        async function addSignal(signal) {
+            const exists = allSignals.find(s => 
+                s.name === signal.name && 
+                s.bias === signal.bias &&
+                Date.now() - s.timestamp < 300000
+            );
+            
+            if (exists) return;
+            
+            allSignals.unshift(signal);
+            allSignals = allSignals.slice(0, 50);
+            
+            await saveSignalToFirebase(signal);
+            displaySignals();
+            
+            if (signal.confidence >= 70) {
+                playSound();
+            }
+        }
+        
+        async function saveSignalToFirebase(signal) {
+            if (!currentUser) return;
+            
+            try {
+                await fetch(`${FIREBASE_URL}/signals/${signal.id}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(signal)
+                });
+            } catch (e) {
+                console.error('Error saving signal:', e);
+            }
+        }
+        
+        async function loadSignalsFromFirebase() {
+            if (!currentUser) return;
+            
+            try {
+                const response = await fetch(`${FIREBASE_URL}/signals.json`);
+                const data = await response.json();
+                
+                if (data) {
+                    allSignals = Object.values(data)
+                        .filter(s => s.userId === currentUser.email)
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .slice(0, 50);
+                    displaySignals();
+                }
+            } catch (e) {
+                console.error('Error loading signals:', e);
+            }
+        }
+        
+        function displaySignals() {
+            const container = document.getElementById('signalsList');
+            
+            let filtered = allSignals;
+            if (signalFilter !== 'all') {
+                filtered = allSignals.filter(s => s.bias === signalFilter);
+            }
+            
+            if (!filtered.length) {
+                container.innerHTML = `
+                    <div class="no-signals">
+                        <div class="no-signals-icon">📊</div>
+                        <div>No ${signalFilter === 'all' ? '' : signalFilter} signals detected yet</div>
+                        <div style="font-size: 12px; margin-top: 8px;">Start charts to detect SMC patterns</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(s => {
+                const timeAgo = getTimeAgo(s.timestamp);
+                
+                return `
+                    <div class="signal-card ${s.bias}">
+                        <div class="signal-header">
+                            <div>
+                                <div class="signal-name">${s.name}</div>
+                                <div class="signal-symbol">${s.symbol} • ${s.timeframe}</div>
+                            </div>
+                            <div class="signal-badge ${s.bias}">${s.bias.toUpperCase()}</div>
+                        </div>
+                        <div class="signal-info">
+                            <div class="signal-info-item">
+                                <div class="signal-info-label">Entry</div>
+                                <div class="signal-info-value">${s.entry}</div>
+                            </div>
+                            <div class="signal-info-item">
+                                <div class="signal-info-label">TP1</div>
+                                <div class="signal-info-value" style="color: #30D158">${s.tp1}</div>
+                            </div>
+                            <div class="signal-info-item">
+                                <div class="signal-info-label">TP2</div>
+                                <div class="signal-info-value" style="color: #30D158">${s.tp2}</div>
+                            </div>
+                            <div class="signal-info-item">
+                                <div class="signal-info-label">TP3</div>
+                                <div class="signal-info-value" style="color: #30D158">${s.tp3}</div>
+                            </div>
+                            <div class="signal-info-item">
+                                <div class="signal-info-label">Stop Loss</div>
+                                <div class="signal-info-value" style="color: #FF453A">${s.sl}</div>
+                            </div>
+                            <div class="signal-info-item">
+                                <div class="signal-info-label">R:R</div>
+                                <div class="signal-info-value">1:${s.rr}</div>
+                            </div>
+                        </div>
+                        <div class="signal-time">${timeAgo} • Confidence: ${s.confidence}%</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function filterSignals(type) {
+            signalFilter = type;
+            
+            document.querySelectorAll('.signal-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if ((type === 'all' && btn.textContent === 'All') ||
+                    (type === 'bullish' && btn.textContent === 'Bullish') ||
+                    (type === 'bearish' && btn.textContent === 'Bearish')) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            displaySignals();
+        }
+        
+        async function clearAllSignals() {
+            if (!confirm('Clear all signals from database?')) return;
+            
+            try {
+                if (currentUser) {
+                    // Delete only user's signals
+                    for (const signal of allSignals) {
+                        await fetch(`${FIREBASE_URL}/signals/${signal.id}.json`, {
+                            method: 'DELETE'
+                        });
+                    }
+                }
+                allSignals = [];
+                displaySignals();
+            } catch (e) {
+                console.error('Error clearing signals:', e);
+            }
+        }
+        
+        function getTimeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+            
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
+        }
+        
+        function toggleSetting(el, setting) {
+            el.classList.toggle('active');
+            
+            if (setting === 'smc') {
+                analysisEnabled = !analysisEnabled;
+                const btn = document.getElementById('analysisToggle');
+                btn.classList.toggle('active', analysisEnabled);
+            }
+        }
+        
+        function playSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.frequency.value = 880;
+                osc.type = 'sine';
+                
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.3);
+            } catch (e) {
+                console.error('Audio error:', e);
+            }
+        }
+        
+        // ============ UI CONTROLS ============
+        
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
                 const pageId = this.getAttribute('data-page');
@@ -1120,38 +1601,25 @@
                 document.getElementById(pageId).classList.add('active');
                 document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
                 this.classList.add('active');
+                
+                if (pageId === 'signalsPage') {
+                    loadSignalsFromFirebase();
+                }
             });
         });
-
-        // Chart controls
+        
         document.getElementById('startBtn').addEventListener('click', startAllCharts);
         document.getElementById('stopBtn').addEventListener('click', stopAllCharts);
         document.getElementById('refreshBtn').addEventListener('click', function() {
             stopAllCharts();
             setTimeout(startAllCharts, 500);
         });
-
+        
         document.getElementById('analysisToggle').addEventListener('click', function() {
             analysisEnabled = !analysisEnabled;
             this.classList.toggle('active');
         });
-
-        // Toggle switches
-        document.querySelectorAll('.toggle-switch').forEach(toggle => {
-            toggle.addEventListener('click', function() {
-                this.classList.toggle('active');
-            });
-        });
-
-        // Signal filters
-        document.querySelectorAll('.signal-filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.signal-filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-
-        // Window resize
+        
         window.addEventListener('resize', () => {
             if (charts[1]) {
                 charts[1].resizeCanvas();
@@ -1159,3 +1627,5 @@
             }
         });
     </script>
+</body>
+</html>
