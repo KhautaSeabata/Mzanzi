@@ -1,733 +1,989 @@
-// ============================================
-// ANALYSIS.JS - Complete Forex SMC Analyzer with OB, FVG, ChoCh
-// ============================================
+// SMC Forex Analyzer - Complete Analysis Engine
+// Smart Money Concepts Implementation
 
-// Global State
+// Global state
 const state = {
     charts: {},
-    isAnalysisEnabled: true,
-    activeChart: 1,
-    numCharts: 1,
     signals: [],
-    signalFilter: 'all',
-    isRunning: false,
     settings: {
-        showOB: true,
-        showFVG: true,
-        showChoCh: true,
-        soundAlerts: true
-    }
+        smc: true,
+        ob: true,
+        fvg: true,
+        choch: true,
+        sound: true
+    },
+    running: false,
+    signalFilter: 'all'
 };
 
-// Forex pairs configuration
-const PAIRS = {
-    'US100': { name: 'US 100', decimals: 2, basePrice: 25670 },
-    'XAUUSD': { name: 'GOLD', decimals: 2, basePrice: 2650 },
-    'EURUSD': { name: 'EUR/USD', decimals: 5, basePrice: 1.0850 },
-    'GBPUSD': { name: 'GBP/USD', decimals: 5, basePrice: 1.2750 },
-    'AUDUSD': { name: 'AUD/USD', decimals: 5, basePrice: 0.6450 },
-    'AUDCAD': { name: 'AUD/CAD', decimals: 5, basePrice: 0.9050 }
-};
-
-// Timeframe labels
-const TIMEFRAMES = {
-    '300': '5M',
-    '900': '15M',
-    '1800': '30M',
-    '3600': '1H',
-    '14400': '4H'
-};
-
-// Initialize charts on load
-window.addEventListener('load', () => {
-    initializeCharts();
-    updateConnectionStatus(false);
-});
-
-// Initialize all charts
-function initializeCharts() {
-    for (let i = 1; i <= 4; i++) {
-        const symbol = document.getElementById(`symbol${i}`).value;
-        const timeframe = document.getElementById(`timeframe${i}`).value;
+// Chart data structure
+class ChartData {
+    constructor(chartId, symbol, timeframe) {
+        this.chartId = chartId;
+        this.symbol = symbol;
+        this.timeframe = timeframe;
+        this.candles = [];
+        this.canvas = document.getElementById(`canvas${chartId}`);
+        this.ctx = this.canvas.getContext('2d');
+        this.zoom = 1;
+        this.pan = 0;
+        this.touching = false;
+        this.lastTouch = null;
         
-        state.charts[i] = {
-            symbol: symbol,
-            timeframe: timeframe,
-            data: [],
-            zoom: 1,
-            offset: 0,
-            canvas: document.getElementById(`canvas${i}`),
-            ctx: null,
-            animationId: null,
-            lastUpdate: Date.now(),
-            smcData: {
-                orderBlocks: [],
-                fvgs: [],
-                chochs: [],
-                swingHighs: [],
-                swingLows: []
+        // SMC structures
+        this.orderBlocks = [];
+        this.fvgs = [];
+        this.chochs = [];
+        this.liquidityZones = [];
+        this.trend = 'ranging';
+        this.structureBreaks = [];
+        
+        this.setupCanvas();
+        this.setupTouchHandlers();
+    }
+    
+    setupCanvas() {
+        const container = this.canvas.parentElement;
+        this.canvas.width = container.clientWidth;
+        this.canvas.height = container.clientHeight;
+    }
+    
+    setupTouchHandlers() {
+        const container = this.canvas.parentElement;
+        
+        let startX = 0;
+        let startPan = 0;
+        
+        container.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startPan = this.pan;
+        });
+        
+        container.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const deltaX = e.touches[0].clientX - startX;
+            this.pan = startPan + deltaX;
+            this.draw();
+        }, { passive: false });
+    }
+    
+    addCandle(candle) {
+        this.candles.push(candle);
+        if (this.candles.length > 200) {
+            this.candles.shift();
+        }
+        this.analyzeSMC();
+    }
+    
+    analyzeSMC() {
+        if (!state.settings.smc || this.candles.length < 20) return;
+        
+        // Detect Order Blocks
+        if (state.settings.ob) {
+            this.detectOrderBlocks();
+        }
+        
+        // Detect Fair Value Gaps
+        if (state.settings.fvg) {
+            this.detectFVGs();
+        }
+        
+        // Detect Change of Character
+        if (state.settings.choch) {
+            this.detectChoCh();
+        }
+        
+        // Detect liquidity zones
+        this.detectLiquidity();
+        
+        // Determine trend
+        this.determineTrend();
+        
+        // Generate signals
+        this.generateSignals();
+    }
+    
+    detectOrderBlocks() {
+        const len = this.candles.length;
+        if (len < 10) return;
+        
+        this.orderBlocks = [];
+        
+        for (let i = 5; i < len - 3; i++) {
+            const curr = this.candles[i];
+            const next1 = this.candles[i + 1];
+            const next2 = this.candles[i + 2];
+            const next3 = this.candles[i + 3];
+            
+            // Bullish Order Block: Strong down candle followed by strong up moves
+            const isBullishOB = 
+                curr.close < curr.open && // Down candle
+                (curr.open - curr.close) > (curr.high - curr.low) * 0.6 && // Strong body
+                next1.close > next1.open && // Up candle
+                next2.close > next2.open &&
+                next3.close > curr.open; // Breaks above
+            
+            if (isBullishOB) {
+                this.orderBlocks.push({
+                    type: 'bullish',
+                    high: curr.open,
+                    low: curr.close,
+                    index: i,
+                    timestamp: curr.timestamp,
+                    active: true
+                });
             }
+            
+            // Bearish Order Block: Strong up candle followed by strong down moves
+            const isBearishOB = 
+                curr.close > curr.open && // Up candle
+                (curr.close - curr.open) > (curr.high - curr.low) * 0.6 && // Strong body
+                next1.close < next1.open && // Down candle
+                next2.close < next2.open &&
+                next3.close < curr.open; // Breaks below
+            
+            if (isBearishOB) {
+                this.orderBlocks.push({
+                    type: 'bearish',
+                    high: curr.close,
+                    low: curr.open,
+                    index: i,
+                    timestamp: curr.timestamp,
+                    active: true
+                });
+            }
+        }
+        
+        // Keep only recent order blocks
+        this.orderBlocks = this.orderBlocks.slice(-10);
+    }
+    
+    detectFVGs() {
+        const len = this.candles.length;
+        if (len < 5) return;
+        
+        this.fvgs = [];
+        
+        for (let i = 1; i < len - 1; i++) {
+            const prev = this.candles[i - 1];
+            const curr = this.candles[i];
+            const next = this.candles[i + 1];
+            
+            // Bullish FVG: Gap between prev low and next high
+            const bullishGap = next.low - prev.high;
+            if (bullishGap > 0 && curr.close > curr.open) {
+                this.fvgs.push({
+                    type: 'bullish',
+                    high: next.low,
+                    low: prev.high,
+                    index: i,
+                    timestamp: curr.timestamp,
+                    filled: false
+                });
+            }
+            
+            // Bearish FVG: Gap between prev high and next low
+            const bearishGap = prev.low - next.high;
+            if (bearishGap > 0 && curr.close < curr.open) {
+                this.fvgs.push({
+                    type: 'bearish',
+                    high: prev.low,
+                    low: next.high,
+                    index: i,
+                    timestamp: curr.timestamp,
+                    filled: false
+                });
+            }
+        }
+        
+        // Check if FVGs are filled
+        const lastPrice = this.candles[len - 1].close;
+        this.fvgs.forEach(fvg => {
+            if (fvg.type === 'bullish' && lastPrice <= fvg.low) {
+                fvg.filled = true;
+            } else if (fvg.type === 'bearish' && lastPrice >= fvg.high) {
+                fvg.filled = true;
+            }
+        });
+        
+        // Keep only unfilled FVGs
+        this.fvgs = this.fvgs.filter(fvg => !fvg.filled).slice(-8);
+    }
+    
+    detectChoCh() {
+        const len = this.candles.length;
+        if (len < 15) return;
+        
+        this.chochs = [];
+        
+        // Find swing highs and lows
+        const swings = [];
+        for (let i = 5; i < len - 5; i++) {
+            const candle = this.candles[i];
+            let isSwingHigh = true;
+            let isSwingLow = true;
+            
+            for (let j = i - 5; j <= i + 5; j++) {
+                if (j === i) continue;
+                if (this.candles[j].high > candle.high) isSwingHigh = false;
+                if (this.candles[j].low < candle.low) isSwingLow = false;
+            }
+            
+            if (isSwingHigh) {
+                swings.push({ type: 'high', price: candle.high, index: i });
+            } else if (isSwingLow) {
+                swings.push({ type: 'low', price: candle.low, index: i });
+            }
+        }
+        
+        // Detect ChoCh (Change of Character)
+        for (let i = 1; i < swings.length; i++) {
+            const prev = swings[i - 1];
+            const curr = swings[i];
+            
+            // Bullish ChoCh: Break above previous high after lower low
+            if (prev.type === 'low' && curr.type === 'high' && i > 1) {
+                const prevHigh = swings[i - 2];
+                if (prevHigh.type === 'high' && curr.price > prevHigh.price) {
+                    this.chochs.push({
+                        type: 'bullish',
+                        price: prevHigh.price,
+                        index: curr.index,
+                        timestamp: this.candles[curr.index].timestamp
+                    });
+                }
+            }
+            
+            // Bearish ChoCh: Break below previous low after higher high
+            if (prev.type === 'high' && curr.type === 'low' && i > 1) {
+                const prevLow = swings[i - 2];
+                if (prevLow.type === 'low' && curr.price < prevLow.price) {
+                    this.chochs.push({
+                        type: 'bearish',
+                        price: prevLow.price,
+                        index: curr.index,
+                        timestamp: this.candles[curr.index].timestamp
+                    });
+                }
+            }
+        }
+        
+        this.chochs = this.chochs.slice(-5);
+    }
+    
+    detectLiquidity() {
+        const len = this.candles.length;
+        if (len < 20) return;
+        
+        this.liquidityZones = [];
+        
+        // Find areas with multiple equal highs/lows (liquidity pools)
+        const tolerance = 0.001; // 0.1% tolerance
+        
+        for (let i = len - 50; i < len; i++) {
+            if (i < 0) continue;
+            
+            const candle = this.candles[i];
+            let highCount = 1;
+            let lowCount = 1;
+            
+            // Count similar highs and lows nearby
+            for (let j = Math.max(0, i - 10); j < Math.min(len, i + 10); j++) {
+                if (j === i) continue;
+                const other = this.candles[j];
+                
+                if (Math.abs(other.high - candle.high) / candle.high < tolerance) {
+                    highCount++;
+                }
+                if (Math.abs(other.low - candle.low) / candle.low < tolerance) {
+                    lowCount++;
+                }
+            }
+            
+            if (highCount >= 3) {
+                this.liquidityZones.push({
+                    type: 'high',
+                    price: candle.high,
+                    index: i,
+                    strength: highCount
+                });
+            }
+            if (lowCount >= 3) {
+                this.liquidityZones.push({
+                    type: 'low',
+                    price: candle.low,
+                    index: i,
+                    strength: lowCount
+                });
+            }
+        }
+        
+        // Remove duplicates
+        this.liquidityZones = this.liquidityZones.filter((zone, index, self) =>
+            index === self.findIndex(z => 
+                z.type === zone.type && Math.abs(z.price - zone.price) / zone.price < tolerance
+            )
+        );
+    }
+    
+    determineTrend() {
+        const len = this.candles.length;
+        if (len < 30) return;
+        
+        const recent = this.candles.slice(-30);
+        const first = recent[0];
+        const last = recent[recent.length - 1];
+        
+        // Simple trend based on highs and lows
+        const priceChange = (last.close - first.close) / first.close;
+        
+        if (priceChange > 0.02) {
+            this.trend = 'uptrend';
+        } else if (priceChange < -0.02) {
+            this.trend = 'downtrend';
+        } else {
+            this.trend = 'ranging';
+        }
+    }
+    
+    generateSignals() {
+        const len = this.candles.length;
+        if (len < 10) return;
+        
+        const lastCandle = this.candles[len - 1];
+        const prevCandle = this.candles[len - 2];
+        
+        // Check for signal conditions
+        const hasRecentOB = this.orderBlocks.some(ob => 
+            ob.active && len - ob.index < 10
+        );
+        
+        const hasRecentFVG = this.fvgs.some(fvg => 
+            !fvg.filled && len - fvg.index < 15
+        );
+        
+        const hasRecentChoCh = this.chochs.some(ch => 
+            len - ch.index < 8
+        );
+        
+        // Bullish signal conditions
+        if (hasRecentOB && hasRecentFVG && this.trend !== 'downtrend') {
+            const bullishOB = this.orderBlocks.find(ob => 
+                ob.type === 'bullish' && ob.active && len - ob.index < 10
+            );
+            
+            if (bullishOB && lastCandle.close > lastCandle.open) {
+                const signal = {
+                    id: Date.now() + Math.random(),
+                    type: 'bullish',
+                    symbol: this.symbol,
+                    chartId: this.chartId,
+                    entry: lastCandle.close,
+                    tp: lastCandle.close * 1.015,
+                    sl: lastCandle.close * 0.995,
+                    confidence: this.calculateConfidence('bullish'),
+                    timestamp: Date.now(),
+                    patterns: ['Order Block', 'FVG'],
+                    timeframe: this.getTimeframeName()
+                };
+                
+                addSignal(signal);
+            }
+        }
+        
+        // Bearish signal conditions
+        if (hasRecentOB && hasRecentFVG && this.trend !== 'uptrend') {
+            const bearishOB = this.orderBlocks.find(ob => 
+                ob.type === 'bearish' && ob.active && len - ob.index < 10
+            );
+            
+            if (bearishOB && lastCandle.close < lastCandle.open) {
+                const signal = {
+                    id: Date.now() + Math.random(),
+                    type: 'bearish',
+                    symbol: this.symbol,
+                    chartId: this.chartId,
+                    entry: lastCandle.close,
+                    tp: lastCandle.close * 0.985,
+                    sl: lastCandle.close * 1.005,
+                    confidence: this.calculateConfidence('bearish'),
+                    timestamp: Date.now(),
+                    patterns: ['Order Block', 'FVG'],
+                    timeframe: this.getTimeframeName()
+                };
+                
+                addSignal(signal);
+            }
+        }
+    }
+    
+    calculateConfidence(type) {
+        let score = 50;
+        
+        // Trend alignment
+        if ((type === 'bullish' && this.trend === 'uptrend') ||
+            (type === 'bearish' && this.trend === 'downtrend')) {
+            score += 20;
+        }
+        
+        // Multiple confirmations
+        if (this.orderBlocks.length > 0) score += 10;
+        if (this.fvgs.length > 0) score += 10;
+        if (this.chochs.length > 0) score += 10;
+        
+        return Math.min(95, score);
+    }
+    
+    getTimeframeName() {
+        const names = {
+            '300': '5M',
+            '900': '15M',
+            '1800': '30M',
+            '3600': '1H',
+            '14400': '4H'
+        };
+        return names[this.timeframe] || '5M';
+    }
+    
+    draw() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        
+        this.ctx.clearRect(0, 0, w, h);
+        
+        if (this.candles.length === 0) {
+            this.ctx.fillStyle = '#8E8E93';
+            this.ctx.font = '14px -apple-system';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('Loading...', w / 2, h / 2);
+            return;
+        }
+        
+        // Calculate visible range
+        const candleWidth = 8 * this.zoom;
+        const gap = 2 * this.zoom;
+        const totalWidth = (candleWidth + gap) * this.candles.length;
+        const visibleCandles = Math.floor(w / (candleWidth + gap));
+        const startIdx = Math.max(0, this.candles.length - visibleCandles);
+        
+        // Get price range
+        let minPrice = Infinity;
+        let maxPrice = -Infinity;
+        for (let i = startIdx; i < this.candles.length; i++) {
+            const c = this.candles[i];
+            minPrice = Math.min(minPrice, c.low);
+            maxPrice = Math.max(maxPrice, c.high);
+        }
+        
+        const priceRange = maxPrice - minPrice;
+        const padding = priceRange * 0.1;
+        minPrice -= padding;
+        maxPrice += padding;
+        
+        const priceToY = (price) => {
+            return h - ((price - minPrice) / (maxPrice - minPrice)) * h;
         };
         
-        // Setup canvas
-        const canvas = state.charts[i].canvas;
-        const ctx = canvas.getContext('2d');
-        state.charts[i].ctx = ctx;
-        
-        // Set canvas size
-        resizeCanvas(i);
-        
-        // Setup touch/mouse interactions
-        setupInteractions(i);
-    }
-    
-    // Add resize listener
-    window.addEventListener('resize', () => {
-        for (let i = 1; i <= 4; i++) {
-            resizeCanvas(i);
-            if (state.isRunning) drawChart(i);
+        // Draw grid
+        this.ctx.strokeStyle = '#2C2C2E';
+        this.ctx.lineWidth = 1;
+        for (let i = 0; i < 5; i++) {
+            const y = (h / 5) * i;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(w, y);
+            this.ctx.stroke();
         }
-    });
+        
+        // Draw liquidity zones
+        this.liquidityZones.forEach(zone => {
+            if (zone.index < startIdx) return;
+            
+            const y = priceToY(zone.price);
+            this.ctx.strokeStyle = zone.type === 'high' ? 'rgba(255, 69, 58, 0.3)' : 'rgba(48, 209, 88, 0.3)';
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(w, y);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+            
+            // Label
+            this.ctx.fillStyle = zone.type === 'high' ? '#FF453A' : '#30D158';
+            this.ctx.font = '10px -apple-system';
+            this.ctx.fillText('💧', 5, y - 5);
+        });
+        
+        // Draw Order Blocks
+        this.orderBlocks.forEach(ob => {
+            if (!ob.active || ob.index < startIdx) return;
+            
+            const x = (ob.index - startIdx) * (candleWidth + gap);
+            const y1 = priceToY(ob.high);
+            const y2 = priceToY(ob.low);
+            
+            this.ctx.fillStyle = ob.type === 'bullish' ? 
+                'rgba(48, 209, 88, 0.15)' : 'rgba(255, 69, 58, 0.15)';
+            this.ctx.fillRect(x, y1, (candleWidth + gap) * 3, y2 - y1);
+            
+            this.ctx.strokeStyle = ob.type === 'bullish' ? '#30D158' : '#FF453A';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(x, y1, (candleWidth + gap) * 3, y2 - y1);
+            
+            // Label
+            this.ctx.fillStyle = ob.type === 'bullish' ? '#30D158' : '#FF453A';
+            this.ctx.font = 'bold 9px -apple-system';
+            this.ctx.fillText('BOS', x + 5, y1 + 12);
+        });
+        
+        // Draw FVGs
+        this.fvgs.forEach(fvg => {
+            if (fvg.filled || fvg.index < startIdx) return;
+            
+            const x = (fvg.index - startIdx) * (candleWidth + gap);
+            const y1 = priceToY(fvg.high);
+            const y2 = priceToY(fvg.low);
+            
+            this.ctx.fillStyle = fvg.type === 'bullish' ? 
+                'rgba(139, 92, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+            this.ctx.fillRect(x, y1, w - x, y2 - y1);
+            
+            this.ctx.strokeStyle = fvg.type === 'bullish' ? '#8B5CF6' : '#EF4444';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([3, 3]);
+            this.ctx.strokeRect(x, y1, w - x, y2 - y1);
+            this.ctx.setLineDash([]);
+            
+            // Label
+            this.ctx.fillStyle = fvg.type === 'bullish' ? '#8B5CF6' : '#EF4444';
+            this.ctx.font = 'bold 9px -apple-system';
+            this.ctx.fillText('FVG', x + 5, y1 + 12);
+        });
+        
+        // Draw ChoCh markers
+        this.chochs.forEach(ch => {
+            if (ch.index < startIdx) return;
+            
+            const x = (ch.index - startIdx) * (candleWidth + gap);
+            const y = priceToY(ch.price);
+            
+            this.ctx.fillStyle = ch.type === 'bullish' ? '#30D158' : '#FF453A';
+            this.ctx.font = 'bold 10px -apple-system';
+            this.ctx.fillText('ChoCh', x - 15, y - 5);
+            
+            // Arrow
+            this.ctx.beginPath();
+            if (ch.type === 'bullish') {
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(x - 5, y + 10);
+                this.ctx.lineTo(x + 5, y + 10);
+            } else {
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(x - 5, y - 10);
+                this.ctx.lineTo(x + 5, y - 10);
+            }
+            this.ctx.closePath();
+            this.ctx.fill();
+        });
+        
+        // Draw candles
+        for (let i = startIdx; i < this.candles.length; i++) {
+            const c = this.candles[i];
+            const x = (i - startIdx) * (candleWidth + gap) + gap / 2;
+            
+            const isUp = c.close > c.open;
+            this.ctx.fillStyle = isUp ? '#30D158' : '#FF453A';
+            this.ctx.strokeStyle = isUp ? '#30D158' : '#FF453A';
+            
+            // Wick
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x + candleWidth / 2, priceToY(c.high));
+            this.ctx.lineTo(x + candleWidth / 2, priceToY(c.low));
+            this.ctx.stroke();
+            
+            // Body
+            const bodyTop = priceToY(Math.max(c.open, c.close));
+            const bodyBottom = priceToY(Math.min(c.open, c.close));
+            const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+            
+            this.ctx.fillRect(x, bodyTop, candleWidth, bodyHeight);
+        }
+        
+        // Draw price labels
+        this.ctx.fillStyle = '#8E8E93';
+        this.ctx.font = '11px -apple-system';
+        this.ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const price = minPrice + (maxPrice - minPrice) * (i / 4);
+            const y = h - (h * i / 4);
+            this.ctx.fillText(price.toFixed(2), w - 5, y + 4);
+        }
+    }
 }
 
-// Resize canvas to match display size
-function resizeCanvas(chartNum) {
-    const canvas = state.charts[chartNum].canvas;
-    const container = canvas.parentElement;
-    const dpr = window.devicePixelRatio || 1;
-    
-    canvas.width = container.clientWidth * dpr;
-    canvas.height = container.clientHeight * dpr;
-    canvas.style.width = container.clientWidth + 'px';
-    canvas.style.height = container.clientHeight + 'px';
-    
-    state.charts[chartNum].ctx.scale(dpr, dpr);
-}
-
-// Setup touch and mouse interactions
-function setupInteractions(chartNum) {
-    const canvas = state.charts[chartNum].canvas;
-    let isDragging = false;
-    let startX = 0;
-    let startOffset = 0;
-
-    // Touch events
-    canvas.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        startX = e.touches[0].clientX;
-        startOffset = state.charts[chartNum].offset;
-    });
-
-    canvas.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        const deltaX = e.touches[0].clientX - startX;
-        state.charts[chartNum].offset = startOffset - Math.floor(deltaX / 10);
-        state.charts[chartNum].offset = Math.max(0, state.charts[chartNum].offset);
-        drawChart(chartNum);
-    });
-
-    canvas.addEventListener('touchend', () => {
-        isDragging = false;
-    });
-
-    // Mouse events
-    canvas.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        startX = e.clientX;
-        startOffset = state.charts[chartNum].offset;
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const deltaX = e.clientX - startX;
-        state.charts[chartNum].offset = startOffset - Math.floor(deltaX / 10);
-        state.charts[chartNum].offset = Math.max(0, state.charts[chartNum].offset);
-        drawChart(chartNum);
-    });
-
-    canvas.addEventListener('mouseup', () => {
-        isDragging = false;
-    });
-
-    canvas.addEventListener('mouseleave', () => {
-        isDragging = false;
-    });
-}
-
-// Generate realistic forex price data
-function generateForexData(symbol, count = 150) {
-    const data = [];
-    const config = PAIRS[symbol];
-    let basePrice = config.basePrice;
-    
-    // Volatility settings
-    const volatility = symbol === 'XAUUSD' || symbol === 'US100' ? 
-        (Math.random() * 3 + 1) : 0.0015;
+// Generate realistic candle data
+function generateCandles(symbol, count = 100) {
+    const candles = [];
+    let price = getBasePrice(symbol);
+    let timestamp = Date.now() - count * 5 * 60 * 1000;
     
     for (let i = 0; i < count; i++) {
-        const change = (Math.random() - 0.48) * volatility; // Slight upward bias
-        const trendFactor = Math.sin(i / 20) * volatility * 0.5;
+        const trend = Math.sin(i / 10) * 0.003;
+        const volatility = 0.002;
+        const change = (Math.random() - 0.5) * volatility + trend;
         
-        const open = basePrice;
-        const close = open + change + trendFactor;
-        const high = Math.max(open, close) + Math.random() * volatility * 0.6;
-        const low = Math.min(open, close) - Math.random() * volatility * 0.6;
+        const open = price;
+        const close = price * (1 + change);
+        const high = Math.max(open, close) * (1 + Math.random() * 0.001);
+        const low = Math.min(open, close) * (1 - Math.random() * 0.001);
         
-        data.push({
-            time: Date.now() - (count - i) * 60000,
-            open: parseFloat(open.toFixed(config.decimals)),
-            high: parseFloat(high.toFixed(config.decimals)),
-            low: parseFloat(low.toFixed(config.decimals)),
-            close: parseFloat(close.toFixed(config.decimals))
+        candles.push({
+            timestamp,
+            open,
+            high,
+            low,
+            close,
+            volume: Math.random() * 1000 + 500
         });
         
-        basePrice = close;
+        price = close;
+        timestamp += 5 * 60 * 1000;
     }
     
-    return data;
+    return candles;
 }
 
-// Start all charts
-function startAllCharts() {
-    state.isRunning = true;
-    updateConnectionStatus(true);
+function getBasePrice(symbol) {
+    const prices = {
+        'US100': 21500,
+        'XAUUSD': 2650,
+        'EURUSD': 1.0850,
+        'GBPUSD': 1.2650,
+        'AUDUSD': 0.6550,
+        'AUDCAD': 0.9150
+    };
+    return prices[symbol] || 1.0;
+}
+
+// Initialize chart
+function initChart(chartId) {
+    const symbol = document.getElementById(`symbol${chartId}`).value;
+    const timeframe = document.getElementById(`timeframe${chartId}`).value;
     
-    for (let i = 1; i <= state.numCharts; i++) {
-        if (!state.charts[i].data.length) {
-            state.charts[i].data = generateForexData(state.charts[i].symbol);
-            analyzeSMCStructure(i);
-        }
-        updateChartData(i);
+    const chart = new ChartData(chartId, symbol, timeframe);
+    state.charts[chartId] = chart;
+    
+    // Load initial data
+    const candles = generateCandles(symbol);
+    candles.forEach(c => chart.addCandle(c));
+    chart.draw();
+    
+    updateChartInfo(chartId);
+}
+
+// Update chart info bar
+function updateChartInfo(chartId) {
+    const chart = state.charts[chartId];
+    if (!chart || chart.candles.length === 0) return;
+    
+    const last = chart.candles[chart.candles.length - 1];
+    const first = chart.candles[0];
+    
+    document.getElementById(`price${chartId}`).textContent = last.close.toFixed(5);
+    
+    const change = ((last.close - first.close) / first.close) * 100;
+    const changeEl = document.getElementById(`change${chartId}`);
+    changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+    changeEl.className = 'info-value ' + (change >= 0 ? 'green' : 'red');
+    
+    const high = Math.max(...chart.candles.map(c => c.high));
+    const low = Math.min(...chart.candles.map(c => c.low));
+    document.getElementById(`highlow${chartId}`).textContent = 
+        `${high.toFixed(2)}/${low.toFixed(2)}`;
+}
+
+// Chart controls
+function updateChart(chartId) {
+    if (state.charts[chartId]) {
+        const symbol = document.getElementById(`symbol${chartId}`).value;
+        const timeframe = document.getElementById(`timeframe${chartId}`).value;
+        
+        state.charts[chartId].symbol = symbol;
+        state.charts[chartId].timeframe = timeframe;
+        state.charts[chartId].candles = [];
+        
+        const candles = generateCandles(symbol);
+        candles.forEach(c => state.charts[chartId].addCandle(c));
+        state.charts[chartId].draw();
+        
+        updateChartInfo(chartId);
+        
+        const symbolName = document.getElementById(`symbol${chartId}`).selectedOptions[0].text;
+        document.getElementById(`symbolName${chartId}`).textContent = symbolName;
     }
 }
 
-// Stop all charts
-function stopAllCharts() {
-    state.isRunning = false;
-    updateConnectionStatus(false);
+function zoom(chartId, direction) {
+    const chart = state.charts[chartId];
+    if (!chart) return;
+    
+    if (direction === 'in') {
+        chart.zoom = Math.min(3, chart.zoom * 1.2);
+    } else {
+        chart.zoom = Math.max(0.5, chart.zoom / 1.2);
+    }
+    chart.draw();
+}
+
+function changeNumCharts() {
+    const num = parseInt(document.getElementById('numCharts').value);
     
     for (let i = 1; i <= 4; i++) {
-        if (state.charts[i].animationId) {
-            cancelAnimationFrame(state.charts[i].animationId);
-            state.charts[i].animationId = null;
-        }
-    }
-}
-
-// Refresh all charts
-function refreshAllCharts() {
-    for (let i = 1; i <= state.numCharts; i++) {
-        state.charts[i].data = generateForexData(state.charts[i].symbol);
-        state.charts[i].offset = 0;
-        analyzeSMCStructure(i);
-        drawChart(i);
-    }
-}
-
-// Update chart data periodically
-function updateChartData(chartNum) {
-    if (!state.isRunning) return;
-    
-    const chart = state.charts[chartNum];
-    const now = Date.now();
-    
-    // Add new candle every 1.5 seconds (simulated)
-    if (now - chart.lastUpdate > 1500) {
-        const lastCandle = chart.data[chart.data.length - 1];
-        const config = PAIRS[chart.symbol];
-        const volatility = chart.symbol === 'XAUUSD' || chart.symbol === 'US100' ? 
-            (Math.random() * 3 + 1) : 0.0015;
-        const change = (Math.random() - 0.48) * volatility;
+        const chartEl = document.getElementById(`chart${i}`);
+        const tabEl = document.querySelector(`.chart-tab:nth-child(${i})`);
         
-        const newCandle = {
-            time: now,
-            open: lastCandle.close,
-            high: Math.max(lastCandle.close, lastCandle.close + change) + Math.random() * volatility * 0.6,
-            low: Math.min(lastCandle.close, lastCandle.close + change) - Math.random() * volatility * 0.6,
-            close: parseFloat((lastCandle.close + change).toFixed(config.decimals))
-        };
-        
-        chart.data.push(newCandle);
-        if (chart.data.length > 250) chart.data.shift();
-        
-        chart.lastUpdate = now;
-        
-        // Analyze SMC structure
-        if (state.isAnalysisEnabled) {
-            analyzeSMCStructure(chartNum);
-            
-            // Check for new signals
-            if (Math.random() > 0.97) { // 3% chance per update
-                detectAndCreateSignal(chartNum);
+        if (i <= num) {
+            tabEl.style.display = 'block';
+            if (!state.charts[i]) {
+                initChart(i);
             }
-        }
-    }
-    
-    drawChart(chartNum);
-    updateChartInfo(chartNum);
-    
-    chart.animationId = requestAnimationFrame(() => updateChartData(chartNum));
-}
-
-// Analyze complete SMC structure
-function analyzeSMCStructure(chartNum) {
-    const chart = state.charts[chartNum];
-    const data = chart.data;
-    
-    if (data.length < 30) return;
-    
-    // Find swing points
-    chart.smcData.swingHighs = findSwingPoints(data, 'high', 8);
-    chart.smcData.swingLows = findSwingPoints(data, 'low', 8);
-    
-    // Detect Order Blocks
-    chart.smcData.orderBlocks = detectOrderBlocks(data);
-    
-    // Detect Fair Value Gaps (FVG)
-    chart.smcData.fvgs = detectFVG(data);
-    
-    // Detect Change of Character (ChoCh)
-    chart.smcData.chochs = detectChoCh(data, chart.smcData.swingHighs, chart.smcData.swingLows);
-}
-
-// Find swing high/low points
-function findSwingPoints(data, type = 'high', lookback = 8) {
-    const points = [];
-    
-    for (let i = lookback; i < data.length - lookback; i++) {
-        const current = data[i];
-        let isSwing = true;
-        
-        // Check if it's a swing point
-        for (let j = i - lookback; j <= i + lookback; j++) {
-            if (j !== i) {
-                if (type === 'high' && data[j].high >= current.high) {
-                    isSwing = false;
-                    break;
-                }
-                if (type === 'low' && data[j].low <= current.low) {
-                    isSwing = false;
-                    break;
-                }
-            }
-        }
-        
-        if (isSwing) {
-            points.push({
-                idx: i,
-                price: type === 'high' ? current.high : current.low,
-                type: type
-            });
-        }
-    }
-    
-    return points;
-}
-
-// Detect Order Blocks
-function detectOrderBlocks(data) {
-    const orderBlocks = [];
-    
-    for (let i = 5; i < data.length - 1; i++) {
-        const curr = data[i];
-        const prev = data[i - 1];
-        const next = data[i + 1];
-        
-        // Bullish Order Block: Strong up move after down candle
-        if (prev.close < prev.open && // Previous candle bearish
-            curr.close > curr.open && // Current candle bullish
-            curr.close > prev.high && // Break above
-            (curr.close - curr.open) > (prev.open - prev.close) * 1.5) { // Strong move
-            
-            orderBlocks.push({
-                type: 'bullish',
-                startIdx: i - 1,
-                endIdx: i + 3,
-                high: prev.high,
-                low: prev.low,
-                detected: i
-            });
-        }
-        
-        // Bearish Order Block: Strong down move after up candle
-        if (prev.close > prev.open && // Previous candle bullish
-            curr.close < curr.open && // Current candle bearish
-            curr.close < prev.low && // Break below
-            (curr.open - curr.close) > (prev.close - prev.open) * 1.5) { // Strong move
-            
-            orderBlocks.push({
-                type: 'bearish',
-                startIdx: i - 1,
-                endIdx: i + 3,
-                high: prev.high,
-                low: prev.low,
-                detected: i
-            });
-        }
-    }
-    
-    // Keep only recent order blocks
-    return orderBlocks.filter(ob => ob.endIdx >= data.length - 100);
-}
-
-// Detect Fair Value Gaps (FVG)
-function detectFVG(data) {
-    const fvgs = [];
-    
-    for (let i = 2; i < data.length; i++) {
-        const candle1 = data[i - 2];
-        const candle2 = data[i - 1];
-        const candle3 = data[i];
-        
-        // Bullish FVG: Gap between candle1 high and candle3 low
-        if (candle1.high < candle3.low && candle2.close > candle2.open) {
-            fvgs.push({
-                type: 'bullish',
-                startIdx: i - 2,
-                endIdx: i + 5,
-                high: candle3.low,
-                low: candle1.high,
-                detected: i
-            });
-        }
-        
-        // Bearish FVG: Gap between candle1 low and candle3 high
-        if (candle1.low > candle3.high && candle2.close < candle2.open) {
-            fvgs.push({
-                type: 'bearish',
-                startIdx: i - 2,
-                endIdx: i + 5,
-                high: candle1.low,
-                low: candle3.high,
-                detected: i
-            });
-        }
-    }
-    
-    // Keep only recent FVGs
-    return fvgs.filter(fvg => fvg.endIdx >= data.length - 80);
-}
-
-// Detect Change of Character (ChoCh)
-function detectChoCh(data, swingHighs, swingLows) {
-    const chochs = [];
-    
-    // Need at least 2 swing points to detect ChoCh
-    if (swingHighs.length < 2 || swingLows.length < 2) return chochs;
-    
-    // Bullish ChoCh: Price breaks above previous swing high
-    for (let i = 1; i < swingHighs.length; i++) {
-        const prevHigh = swingHighs[i - 1];
-        const currHigh = swingHighs[i];
-        
-        if (currHigh.price > prevHigh.price * 1.001) { // 0.1% threshold
-            chochs.push({
-                type: 'bullish',
-                idx: currHigh.idx,
-                price: prevHigh.price,
-                label: 'ChoCH'
-            });
-        }
-    }
-    
-    // Bearish ChoCh: Price breaks below previous swing low
-    for (let i = 1; i < swingLows.length; i++) {
-        const prevLow = swingLows[i - 1];
-        const currLow = swingLows[i];
-        
-        if (currLow.price < prevLow.price * 0.999) { // 0.1% threshold
-            chochs.push({
-                type: 'bearish',
-                idx: currLow.idx,
-                price: prevLow.price,
-                label: 'ChoCH'
-            });
-        }
-    }
-    
-    return chochs;
-}
-
-// Draw chart on canvas
-function drawChart(chartNum) {
-    const chart = state.charts[chartNum];
-    const ctx = chart.ctx;
-    const canvas = chart.canvas;
-    const w = canvas.width / (window.devicePixelRatio || 1);
-    const h = canvas.height / (window.devicePixelRatio || 1);
-    
-    // Clear canvas
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, w, h);
-    
-    if (!chart.data.length) return;
-    
-    // Calculate visible data
-    const candleWidth = 10 * chart.zoom;
-    const candleSpacing = 2 * chart.zoom;
-    const totalWidth = candleWidth + candleSpacing;
-    const visibleCandles = Math.floor(w / totalWidth);
-    const startIdx = Math.max(0, chart.data.length - visibleCandles - chart.offset);
-    const endIdx = Math.min(chart.data.length, startIdx + visibleCandles);
-    const visibleData = chart.data.slice(startIdx, endIdx);
-    
-    if (!visibleData.length) return;
-    
-    // Find price range
-    let minPrice = Infinity;
-    let maxPrice = -Infinity;
-    visibleData.forEach(candle => {
-        minPrice = Math.min(minPrice, candle.low);
-        maxPrice = Math.max(maxPrice, candle.high);
-    });
-    
-    const priceRange = maxPrice - minPrice;
-    const padding = priceRange * 0.1;
-    minPrice -= padding;
-    maxPrice += padding;
-    
-    // Helper function to convert price to Y coordinate
-    const priceToY = (price) => {
-        return h - ((price - minPrice) / (maxPrice - minPrice)) * h;
-    };
-    
-    // Helper function to convert index to X coordinate
-    const idxToX = (localIdx) => {
-        return localIdx * totalWidth + totalWidth / 2;
-    };
-    
-    // Draw price grid
-    ctx.strokeStyle = '#1C1C1E';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-        const y = (h * i) / 5;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-    }
-    
-    // Draw SMC Analysis overlays (behind candlesticks)
-    if (state.isAnalysisEnabled) {
-        // Draw Order Blocks
-        if (state.settings.showOB) {
-            chart.smcData.orderBlocks.forEach(ob => {
-                if (ob.startIdx >= startIdx && ob.startIdx < endIdx) {
-                    const localStart = ob.startIdx - startIdx;
-                    const localEnd = Math.min(ob.endIdx - startIdx, visibleCandles);
-                    const x1 = idxToX(localStart);
-                    const x2 = idxToX(localEnd);
-                    const y1 = priceToY(ob.high);
-                    const y2 = priceToY(ob.low);
-                    
-                    // Draw Order Block zone
-                    ctx.fillStyle = ob.type === 'bullish' ? 
-                        'rgba(139, 92, 246, 0.15)' : 'rgba(239, 68, 68, 0.15)';
-                    ctx.fillRect(x1 - candleWidth/2, y1, x2 - x1 + candleWidth, y2 - y1);
-                    
-                    ctx.strokeStyle = ob.type === 'bullish' ? 
-                        'rgba(139, 92, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(x1 - candleWidth/2, y1, x2 - x1 + candleWidth, y2 - y1);
-                    
-                    // Label
-                    ctx.fillStyle = ob.type === 'bullish' ? '#8B5CF6' : '#EF4444';
-                    ctx.font = '10px sans-serif';
-                    ctx.fillText('OB', x1, y1 - 5);
-                }
-            });
-        }
-        
-        // Draw Fair Value Gaps (FVG)
-        if (state.settings.showFVG) {
-            chart.smcData.fvgs.forEach(fvg => {
-                if (fvg.startIdx >= startIdx && fvg.startIdx < endIdx) {
-                    const localStart = fvg.startIdx - startIdx;
-                    const localEnd = Math.min(fvg.endIdx - startIdx, visibleCandles);
-                    const x1 = idxToX(localStart);
-                    const x2 = idxToX(localEnd);
-                    const y1 = priceToY(fvg.high);
-                    const y2 = priceToY(fvg.low);
-                    
-                    // Draw FVG zone
-                    ctx.fillStyle = fvg.type === 'bullish' ? 
-                        'rgba(255, 215, 0, 0.15)' : 'rgba(255, 140, 0, 0.15)';
-                    ctx.fillRect(x1 - candleWidth/2, y1, x2 - x1 + candleWidth, y2 - y1);
-                    
-                    ctx.strokeStyle = fvg.type === 'bullish' ? 
-                        'rgba(255, 215, 0, 0.5)' : 'rgba(255, 140, 0, 0.5)';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([5, 5]);
-                    ctx.strokeRect(x1 - candleWidth/2, y1, x2 - x1 + candleWidth, y2 - y1);
-                    ctx.setLineDash([]);
-                    
-                    // Label
-                    ctx.fillStyle = fvg.type === 'bullish' ? '#FFD700' : '#FF8C00';
-                    ctx.font = '10px sans-serif';
-                    ctx.fillText('FVG', x1, y2 + 12);
-                }
-            });
-        }
-    }
-    
-    // Draw candlesticks
-    visibleData.forEach((candle, idx) => {
-        const x = idxToX(idx);
-        const yHigh = priceToY(candle.high);
-        const yLow = priceToY(candle.low);
-        const yOpen = priceToY(candle.open);
-        const yClose = priceToY(candle.close);
-        
-        const isBullish = candle.close >= candle.open;
-        ctx.strokeStyle = isBullish ? '#30D158' : '#FF453A';
-        ctx.fillStyle = isBullish ? '#30D158' : '#FF453A';
-        
-        // Wick
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, yHigh);
-        ctx.lineTo(x, yLow);
-        ctx.stroke();
-        
-        // Body
-        const bodyHeight = Math.abs(yClose - yOpen);
-        const bodyY = Math.min(yOpen, yClose);
-        
-        if (bodyHeight < 1) {
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(x - candleWidth / 2, bodyY);
-            ctx.lineTo(x + candleWidth / 2, bodyY);
-            ctx.stroke();
         } else {
-            ctx.fillRect(x - candleWidth / 2, bodyY, candleWidth, bodyHeight);
-        }
-    });
-    
-    // Draw ChoCh markers (on top of candlesticks)
-    if (state.isAnalysisEnabled && state.settings.showChoCh) {
-        chart.smcData.chochs.forEach(choch => {
-            if (choch.idx >= startIdx && choch.idx < endIdx) {
-                const localIdx = choch.idx - startIdx;
-                const x = idxToX(localIdx);
-                const y = priceToY(choch.price);
-                
-                // Draw ChoCh marker
-                ctx.fillStyle = choch.type === 'bullish' ? '#30D158' : '#FF453A';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('ChoCH', x, y + (choch.type === 'bullish' ? 15 : -5));
-                
-                // Draw small circle
-                ctx.beginPath();
-                ctx.arc(x, y, 4, 0, Math.PI * 2);
-                ctx.fill();
+            tabEl.style.display = 'none';
+            if (chartEl.classList.contains('active')) {
+                switchChart(1);
             }
+        }
+    }
+}
+
+function switchChart(chartId) {
+    document.querySelectorAll('.single-chart').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.chart-tab').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(`chart${chartId}`).classList.add('active');
+    document.querySelector(`.chart-tab:nth-child(${chartId})`).classList.add('active');
+}
+
+// Chart updates
+let updateInterval;
+
+function startAllCharts() {
+    state.running = true;
+    document.querySelector('[class*="status-indicator"]').className = 
+        'status-indicator status-connected';
+    
+    updateInterval = setInterval(() => {
+        Object.values(state.charts).forEach(chart => {
+            // Generate new candle
+            const last = chart.candles[chart.candles.length - 1];
+            const volatility = 0.002;
+            const trend = chart.trend === 'uptrend' ? 0.0005 : 
+                         chart.trend === 'downtrend' ? -0.0005 : 0;
+            const change = (Math.random() - 0.5) * volatility + trend;
+            
+            const open = last.close;
+            const close = open * (1 + change);
+            const high = Math.max(open, close) * (1 + Math.random() * 0.001);
+            const low = Math.min(open, close) * (1 - Math.random() * 0.001);
+            
+            chart.addCandle({
+                timestamp: Date.now(),
+                open,
+                high,
+                low,
+                close,
+                volume: Math.random() * 1000 + 500
+            });
+            
+            chart.draw();
+            updateChartInfo(chart.chartId);
         });
-    }
-    
-    ctx.textAlign = 'left'; // Reset
+    }, 3000);
 }
 
-// Detect and create trading signal
-function detectAndCreateSignal(chartNum) {
-    const chart = state.charts[chartNum];
-    const data = chart.data;
-    const smcData = chart.smcData;
-    
-    if (data.length < 20) return;
-    
-    const lastCandle = data[data.length - 1];
-    const config = PAIRS[chart.symbol];
-    
-    // Check for Order Block + FVG confluence
-    const recentOB = smcData.orderBlocks.filter(ob => 
-        ob.endIdx >= data.length - 10
+function stopAllCharts() {
+    state.running = false;
+    document.querySelector('[class*="status-indicator"]').className = 
+        'status-indicator status-disconnected';
+    if (updateInterval) {
+        clearInterval(updateInterval);
+    }
+}
+
+function refreshAllCharts() {
+    Object.values(state.charts).forEach(chart => {
+        chart.candles = [];
+        const candles = generateCandles(chart.symbol);
+        candles.forEach(c => chart.addCandle(c));
+        chart.draw();
+        updateChartInfo(chart.chartId);
+    });
+}
+
+function toggleAnalysis() {
+    state.settings.smc = !state.settings.smc;
+    const btn = document.getElementById('analysisToggle');
+    if (state.settings.smc) {
+        btn.classList.add('active');
+        btn.textContent = '📊 SMC ON';
+    } else {
+        btn.classList.remove('active');
+        btn.textContent = '📊 SMC OFF';
+    }
+    refreshAllCharts();
+}
+
+// Signals management
+function addSignal(signal) {
+    // Check if similar signal already exists
+    const exists = state.signals.some(s => 
+        s.symbol === signal.symbol && 
+        s.type === signal.type &&
+        Date.now() - s.timestamp < 60000
     );
-    const recentFVG = smcData.fvgs.filter(fvg => 
-        fvg.endIdx >= data.length - 10
-    );
     
-    if (recentOB.length > 0 || recentFVG.length > 0) {
-        const pattern = recentOB.length > 0 ? recentOB[0] : recentFVG[0];
-        const type = pattern.type;
-        const patternName = recentOB.length > 0 ? 'Order Block' : 'Fair Value Gap';
-        
-        // Calculate targets
-        const atr = calculateATR(data.slice(-20));
-        const entry = lastCandle.close;
-        const tp = type === 'bullish' ? 
-            entry + (atr * 2) : 
-            entry - (atr * 2);
-        const sl = type === 'bullish' ? 
-            entry - atr : 
-            entry + atr;
-        
-        createSignal(chartNum, {
-            type: type,
-            pattern: patternName,
-            price: entry,
-            tp: tp,
-            sl: sl,
-            confidence: 70 + Math.random() * 25
-        });
-    }
-}
-
-// Calculate ATR (Average True Range)
-function calculateATR(data, period = 14) {
-    if (data.length < period) return 0;
-    
-    let sum = 0;
-    for (let i = 1; i < period && i < data.length; i++) {
-        const high = data[i].high;
-        const low = data[i].low;
-        const prevClose = data[i-1].close;
-        const tr = Math.max(
-            high - low,
-            Math.abs(high - prevClose),
-            Math.abs(low - prevClose)
-        );
-        sum += tr;
-    }
-    
-    return sum / Math.min(period - 1, data.length - 1);
-}
-
-// Create trading signal
-function createSignal(chartNum, pattern) {
-    const chart = state.charts[chartNum];
-    const config = PAIRS[chart.symbol];
-    
-    const signal = {
-        id: Date.now() + Math.random(),
-        chartNum: chartNum,
-        symbol: chart.symbol,
-        symbolName: config.name,
-        timeframe: TIMEFRAMES[chart.timeframe],
-        type: pattern.type,
-        pattern: pattern.pattern,
-        price: pattern.price.toFixed(config.decimals),
-        tp: pattern.tp.toFixed(config.decimals),
-        sl: pattern.sl.toFixed(config.decimals),
-        confidence: Math.round(pattern.confidence),
-        time: new Date().toLocaleTimeString()
-    };
+    if (exists) return;
     
     state.signals.unshift(signal);
-    if (state.signals.length > 50) state.signals.pop();
+    if (state.signals.length > 20) {
+        state.signals.pop();
+    }
     
-    updateSignalsList();
+    renderSignals();
     
-    // Play sound if enabled
-    if (state.settings.soundAlerts) {
-        playAlertSound();
+    if (state.settings.sound) {
+        playNotificationSound();
     }
 }
 
-// Play alert sound
-function playAlertSound() {
+function renderSignals() {
+    const container = document.getElementById('signalsList');
+    
+    let filtered = state.signals;
+    if (state.signalFilter !== 'all') {
+        filtered = state.signals.filter(s => s.type === state.signalFilter);
+    }
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="no-signals">
+                <div class="no-signals-icon">📊</div>
+                <div>No ${state.signalFilter === 'all' ? '' : state.signalFilter} signals detected yet</div>
+                <div style="font-size: 12px; margin-top: 8px;">Start charts to detect SMC patterns</div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = filtered.map(signal => {
+        const rr = Math.abs((signal.tp - signal.entry) / (signal.entry - signal.sl)).toFixed(2);
+        const timeAgo = getTimeAgo(signal.timestamp);
+        
+        return `
+            <div class="signal-card ${signal.type}">
+                <div class="signal-header">
+                    <div>
+                        <div class="signal-name">${signal.symbol}</div>
+                        <div class="signal-symbol">${signal.patterns.join(' + ')}</div>
+                    </div>
+                    <div class="signal-badge ${signal.type}">
+                        ${signal.type.toUpperCase()}
+                    </div>
+                </div>
+                <div class="signal-details">
+                    <div class="signal-detail">
+                        <span class="detail-label">Entry</span>
+                        <span class="detail-value">${signal.entry.toFixed(5)}</span>
+                    </div>
+                    <div class="signal-detail">
+                        <span class="detail-label">Risk:Reward</span>
+                        <span class="detail-value">1:${rr}</span>
+                    </div>
+                    <div class="signal-detail">
+                        <span class="detail-label">Timeframe</span>
+                        <span class="detail-value">${signal.timeframe}</span>
+                    </div>
+                    <div class="signal-detail">
+                        <span class="detail-label">Confidence</span>
+                        <span class="detail-value">${signal.confidence}%</span>
+                    </div>
+                </div>
+                <div class="price-targets">
+                    <div class="target-label">Price Targets</div>
+                    <div class="target-range">
+                        <span class="target-price sl">${signal.sl.toFixed(5)}</span>
+                        <div class="target-bar ${signal.type}"></div>
+                        <span class="target-price tp">${signal.tp.toFixed(5)}</span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill ${signal.confidence > 70 ? 'high' : ''}" 
+                             style="width: ${signal.confidence}%"></div>
+                    </div>
+                </div>
+                <div class="signal-time">${timeAgo}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterSignals(filter) {
+    state.signalFilter = filter;
+    
+    document.querySelectorAll('.signal-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    renderSignals();
+}
+
+function clearAllSignals() {
+    if (confirm('Clear all signals?')) {
+        state.signals = [];
+        renderSignals();
+    }
+}
+
+function getTimeAgo(timestamp) {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+// Settings
+function toggleSetting(element, setting) {
+    element.classList.toggle('active');
+    state.settings[setting] = element.classList.contains('active');
+    
+    if (['ob', 'fvg', 'choch'].includes(setting)) {
+        refreshAllCharts();
+    }
+}
+
+// Navigation
+function switchPage(pageId) {
+    document.querySelectorAll('.page-container').forEach(el => {
+        el.classList.remove('active');
+    });
+    document.querySelectorAll('.nav-item').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    document.getElementById(pageId).classList.add('active');
+    event.currentTarget.classList.add('active');
+    
+    if (pageId === 'signalsPage') {
+        renderSignals();
+    }
+}
+
+// Sound notification
+function playNotificationSound() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -739,181 +995,21 @@ function playAlertSound() {
     oscillator.type = 'sine';
     
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
+    oscillator.stop(audioContext.currentTime + 0.5);
 }
 
-// Update signals list display
-function updateSignalsList() {
-    const container = document.getElementById('signalsList');
+// Initialize on load
+window.addEventListener('load', () => {
+    initChart(1);
     
-    const filtered = state.signals.filter(s => {
-        if (state.signalFilter === 'all') return true;
-        return s.type === state.signalFilter;
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        Object.values(state.charts).forEach(chart => {
+            chart.setupCanvas();
+            chart.draw();
+        });
     });
-    
-    if (filtered.length === 0) {
-        container.innerHTML = `
-            <div class="no-signals">
-                <div class="no-signals-icon">📊</div>
-                <div>No signals detected yet</div>
-                <div style="font-size: 12px; margin-top: 8px;">Start charts to detect SMC patterns</div>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = filtered.map(signal => `
-        <div class="signal-card ${signal.type}">
-            <div class="signal-header">
-                <div>
-                    <div class="signal-name">${signal.pattern}</div>
-                    <div class="signal-symbol">${signal.symbolName} - ${signal.timeframe}</div>
-                </div>
-                <div class="signal-badge ${signal.type}">${signal.type.toUpperCase()}</div>
-            </div>
-            <div class="signal-details">
-                <div class="signal-detail">
-                    <span class="detail-label">Entry:</span>
-                    <span class="detail-value">${signal.price}</span>
-                </div>
-                <div class="signal-detail">
-                    <span class="detail-label">Confidence:</span>
-                    <span class="detail-value">${signal.confidence}%</span>
-                </div>
-                <div class="price-targets">
-            <div class="target-label">Expected Move</div>
-            <div class="target-range">
-                <span class="target-price sl">SL ${signal.sl}</span>
-                <div class="target-bar ${signal.type}"></div>
-                <span class="target-price tp">TP ${signal.tp}</span>
-            </div>
-        </div>
-        <div class="confidence-bar">
-            <div class="confidence-fill ${signal.confidence > 80 ? 'high' : ''}" style="width: ${signal.confidence}%"></div>
-        </div>
-        <div class="signal-time">${signal.time}</div>
-    </div>
-`).join('');
-
-const last = chart.data[chart.data.length - 1];
-const prev = chart.data[chart.data.length - 2] || last;
-const config = PAIRS[chart.symbol];
-
-const change = last.close - prev.close;
-const changePercent = ((change / prev.close) * 100).toFixed(2);
-
-// Find high/low from last 24 candles
-const recent = chart.data.slice(-24);
-const high = Math.max(...recent.map(c => c.high));
-const low = Math.min(...recent.map(c => c.low));
-
-document.getElementById(`symbolName${chartNum}`).textContent = config.name;
-document.getElementById(`price${chartNum}`).textContent = last.close.toFixed(config.decimals);
-
-const changeEl = document.getElementById(`change${chartNum}`);
-changeEl.textContent = `${change >= 0 ? '+' : ''}${changePercent}%`;
-changeEl.className = `info-value ${change >= 0 ? 'green' : 'red'}`;
-
-document.getElementById(`highlow${chartNum}`).textContent = 
-    `${high.toFixed(config.decimals)}/${low.toFixed(config.decimals)}`;
-    state.charts[chartNum].symbol = symbol;
-state.charts[chartNum].timeframe = timeframe;
-state.charts[chartNum].data = generateForexData(symbol);
-state.charts[chartNum].offset = 0;
-
-analyzeSMCStructure(chartNum);
-drawChart(chartNum);
-updateChartInfo(chartNum);
-
-// Update chart visibility
-for (let i = 1; i <= 4; i++) {
-    const chart = document.getElementById(`chart${i}`);
-    if (i === chartNum) {
-        chart.classList.add('active');
-    } else {
-        chart.classList.remove('active');
-    }
-}
-
-// Update tabs
-const tabs = document.querySelectorAll('.chart-tab');
-tabs.forEach((tab, idx) => {
-    if (idx + 1 === chartNum) {
-        tab.classList.add('active');
-    } else {
-        tab.classList.remove('active');
-    }
 });
-
-// Update chart tabs visibility
-const tabs = document.querySelectorAll('.chart-tab');
-tabs.forEach((tab, idx) => {
-    tab.style.display = idx < num ? 'block' : 'none';
-});
-
-// Switch to chart 1 if current is hidden
-if (state.activeChart > num) {
-    switchChart(1);
-}
-
-    
-if (state.isAnalysisEnabled) {
-    btn.classList.add('active');
-    btn.textContent = '📊 SMC ON';
-} else {
-    btn.classList.remove('active');
-    btn.textContent = '📊 SMC OFF';
-}
-
-// Redraw all charts
-for (let i = 1; i <= state.numCharts; i++) {
-    drawChart(i);
-}
-// Update button states
-const btns = document.querySelectorAll('.signal-filter-btn');
-btns.forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.textContent.toLowerCase().includes(filter)) {
-        btn.classList.add('active');
-    }
-});
-
-updateSignalsList();
-
-// Show selected page
-document.getElementById(pageId).classList.add('active');
-
-// Update nav items
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.remove('active');
-});
-event.currentTarget.classList.add('active');
-
-
-// Update settings
-switch(setting) {
-    case 'smc':
-        state.isAnalysisEnabled = element.classList.contains('active');
-        toggleAnalysis();
-        break;
-    case 'ob':
-        state.settings.showOB = element.classList.contains('active');
-        break;
-    case 'fvg':
-        state.settings.showFVG = element.classList.contains('active');
-        break;
-    case 'choch':
-        state.settings.showChoCh = element.classList.contains('active');
-        break;
-    case 'sound':
-        state.settings.soundAlerts = element.classList.contains('active');
-        break;
-}
-
-// Redraw charts
-for (let i = 1; i <= state.numCharts; i++) {
-    drawChart(i);
-}
