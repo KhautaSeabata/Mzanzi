@@ -743,31 +743,27 @@
     </div>
 
     <script>
-        // Database
+        // ============ AUTHENTICATION ============
         const db = {};
         let currentUser = null;
         let forgotStep = 1;
 
-        // Show page
         function showPage(pageId) {
             document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
             document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
         }
 
-        // Show message
         function showMessage(id, text) {
             const el = document.getElementById(id);
             el.textContent = text;
             el.style.display = 'block';
         }
 
-        // Hide message
         function hideMessages() {
             document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
         }
 
-        // Register
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             e.preventDefault();
             hideMessages();
@@ -803,7 +799,6 @@
             }, 2000);
         });
 
-        // Login
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             hideMessages();
@@ -825,9 +820,11 @@
             document.getElementById('userNameDisplay').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
             document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
             document.getElementById('appContainer').classList.add('active');
+            
+            // Initialize charts after login
+            setTimeout(() => initializeCharts(), 300);
         });
 
-        // Forgot Password
         document.getElementById('forgotForm').addEventListener('submit', function(e) {
             e.preventDefault();
             hideMessages();
@@ -871,7 +868,6 @@
             }
         });
 
-        // Navigation links
         document.getElementById('signupLink').addEventListener('click', function(e) {
             e.preventDefault();
             showPage('registerPage');
@@ -896,15 +892,225 @@
             showPage('loginPage');
         });
 
-        // Logout
         document.getElementById('logoutBtn').addEventListener('click', function() {
             if (confirm('Are you sure you want to logout?')) {
+                stopAllCharts();
                 currentUser = null;
                 document.getElementById('appContainer').classList.remove('active');
                 showPage('loginPage');
                 document.getElementById('loginForm').reset();
             }
         });
+
+        // ============ CHART SYSTEM ============
+        const FIREBASE_URL = 'https://alerts-83c9b-default-rtdb.firebaseio.com';
+        const SYMBOL_CONFIG = {
+            'US100': { name: 'US 100', base: 21500, apiSymbol: 'US100' },
+            'XAUUSD': { name: 'GOLD', base: 2650, apiSymbol: 'frxXAUUSD' },
+            'EURUSD': { name: 'EUR/USD', base: 1.0850, apiSymbol: 'frxEURUSD' },
+            'GBPUSD': { name: 'GBP/USD', base: 1.2650, apiSymbol: 'frxGBPUSD' },
+            'AUDUSD': { name: 'AUD/USD', base: 0.6550, apiSymbol: 'frxAUDUSD' },
+            'AUDCAD': { name: 'AUD/CAD', base: 0.9150, apiSymbol: 'frxAUDCAD' }
+        };
+
+        let charts = {};
+        let analysisEnabled = true;
+        let allSignals = [];
+        let signalFilter = 'all';
+
+        class ChartManager {
+            constructor(id) {
+                this.id = id;
+                this.canvas = document.getElementById(`canvas${id}`);
+                this.ctx = this.canvas.getContext('2d');
+                this.data = [];
+                this.ws = null;
+                this.symbol = 'US100';
+                this.timeframe = 300;
+                this.zoom = 80;
+                this.running = false;
+                
+                this.resizeCanvas();
+                this.startSimulation();
+            }
+
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+            }
+
+            startSimulation() {
+                this.running = true;
+                const config = SYMBOL_CONFIG[this.symbol];
+                let price = config.base;
+                
+                // Generate initial data
+                const now = Date.now();
+                for (let i = 100; i >= 0; i--) {
+                    const time = now - (i * this.timeframe * 1000);
+                    const volatility = price * 0.002;
+                    const change = (Math.random() - 0.48) * volatility;
+                    const open = price;
+                    price += change;
+                    const high = Math.max(open, price) + Math.random() * volatility * 0.5;
+                    const low = Math.min(open, price) - Math.random() * volatility * 0.5;
+                    
+                    this.data.push({
+                        x: time,
+                        o: open,
+                        h: high,
+                        l: low,
+                        c: price
+                    });
+                }
+                
+                this.draw();
+                this.updateInfo();
+                
+                // Update periodically
+                this.interval = setInterval(() => {
+                    if (this.running) {
+                        const last = this.data[this.data.length - 1];
+                        const volatility = last.c * 0.002;
+                        const change = (Math.random() - 0.48) * volatility;
+                        const newPrice = last.c + change;
+                        
+                        const now = Date.now();
+                        const candleStart = Math.floor(now / (this.timeframe * 1000)) * (this.timeframe * 1000);
+                        
+                        if (candleStart > last.x) {
+                            this.data.push({
+                                x: candleStart,
+                                o: last.c,
+                                h: Math.max(last.c, newPrice),
+                                l: Math.min(last.c, newPrice),
+                                c: newPrice
+                            });
+                            if (this.data.length > 200) this.data.shift();
+                        } else {
+                            last.c = newPrice;
+                            last.h = Math.max(last.h, newPrice);
+                            last.l = Math.min(last.l, newPrice);
+                        }
+                        
+                        this.draw();
+                        this.updateInfo();
+                    }
+                }, 2000);
+            }
+
+            draw() {
+                if (!this.data.length) return;
+                
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                const padding = { top: 20, right: 60, bottom: 20, left: 10 };
+                const chartW = this.canvas.width - padding.left - padding.right;
+                const chartH = this.canvas.height - padding.top - padding.bottom;
+                
+                const visible = this.data.slice(-this.zoom);
+                if (!visible.length) return;
+                
+                const prices = visible.flatMap(c => [c.h, c.l]);
+                const maxP = Math.max(...prices);
+                const minP = Math.min(...prices);
+                const range = maxP - minP;
+                const pad = range * 0.1;
+                
+                const candleW = Math.max(2, Math.min(12, chartW / visible.length - 2));
+                const spacing = chartW / visible.length;
+                
+                const priceToY = (price) => {
+                    return padding.top + ((maxP + pad - price) / (range + pad * 2)) * chartH;
+                };
+                
+                // Draw grid
+                this.ctx.strokeStyle = '#2C2C2E';
+                this.ctx.lineWidth = 1;
+                for (let i = 0; i <= 4; i++) {
+                    const y = padding.top + (chartH / 4) * i;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(padding.left, y);
+                    this.ctx.lineTo(this.canvas.width - padding.right, y);
+                    this.ctx.stroke();
+                }
+                
+                // Draw candles
+                visible.forEach((c, i) => {
+                    const x = padding.left + spacing * i + spacing / 2;
+                    const yH = priceToY(c.h);
+                    const yL = priceToY(c.l);
+                    const yO = priceToY(c.o);
+                    const yC = priceToY(c.c);
+                    
+                    const isUp = c.c >= c.o;
+                    const color = isUp ? '#30D158' : '#FF453A';
+                    
+                    this.ctx.strokeStyle = color;
+                    this.ctx.lineWidth = Math.max(1, candleW / 4);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, yH);
+                    this.ctx.lineTo(x, yL);
+                    this.ctx.stroke();
+                    
+                    this.ctx.fillStyle = color;
+                    const bodyH = Math.max(Math.abs(yC - yO), 1);
+                    this.ctx.fillRect(x - candleW / 2, Math.min(yO, yC), candleW, bodyH);
+                });
+                
+                // Draw price scale
+                this.ctx.fillStyle = '#8E8E93';
+                this.ctx.font = '10px -apple-system';
+                this.ctx.textAlign = 'left';
+                for (let i = 0; i <= 4; i++) {
+                    const price = maxP + pad - (range + pad * 2) * (i / 4);
+                    const y = padding.top + (chartH / 4) * i;
+                    this.ctx.fillText(price.toFixed(2), this.canvas.width - padding.right + 5, y + 3);
+                }
+            }
+
+            updateInfo() {
+                if (!this.data.length) return;
+                
+                const current = this.data[this.data.length - 1];
+                const first = this.data[0];
+                const change = current.c - first.o;
+                const changePercent = (change / first.o) * 100;
+                
+                const priceEl = document.querySelector(`#chart${this.id} .info-value`);
+                if (priceEl && priceEl.parentElement.querySelector('.info-label').textContent === 'Price') {
+                    priceEl.textContent = current.c.toFixed(2);
+                }
+                
+                const changeEl = document.querySelectorAll(`#chart${this.id} .info-value`)[2];
+                if (changeEl) {
+                    changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+                    changeEl.className = `info-value ${changePercent >= 0 ? 'green' : 'red'}`;
+                }
+            }
+
+            stop() {
+                this.running = false;
+                if (this.interval) clearInterval(this.interval);
+            }
+        }
+
+        function initializeCharts() {
+            charts[1] = new ChartManager(1);
+            document.getElementById('connectionStatus').className = 'status-indicator status-connected';
+        }
+
+        function startAllCharts() {
+            if (!charts[1]) initializeCharts();
+            charts[1].running = true;
+            document.getElementById('connectionStatus').className = 'status-indicator status-connected';
+        }
+
+        function stopAllCharts() {
+            if (charts[1]) charts[1].stop();
+            document.getElementById('connectionStatus').className = 'status-indicator status-disconnected';
+        }
 
         // Bottom Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -918,23 +1124,15 @@
         });
 
         // Chart controls
-        document.getElementById('numCharts').addEventListener('change', function() {
-            console.log('Chart count changed:', this.value);
-        });
-
-        document.getElementById('startBtn').addEventListener('click', function() {
-            document.getElementById('connectionStatus').className = 'status-indicator status-connected';
-        });
-
-        document.getElementById('stopBtn').addEventListener('click', function() {
-            document.getElementById('connectionStatus').className = 'status-indicator status-disconnected';
-        });
-
+        document.getElementById('startBtn').addEventListener('click', startAllCharts);
+        document.getElementById('stopBtn').addEventListener('click', stopAllCharts);
         document.getElementById('refreshBtn').addEventListener('click', function() {
-            console.log('Refreshing charts...');
+            stopAllCharts();
+            setTimeout(startAllCharts, 500);
         });
 
         document.getElementById('analysisToggle').addEventListener('click', function() {
+            analysisEnabled = !analysisEnabled;
             this.classList.toggle('active');
         });
 
@@ -951,5 +1149,13 @@
                 document.querySelectorAll('.signal-filter-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
             });
+        });
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            if (charts[1]) {
+                charts[1].resizeCanvas();
+                charts[1].draw();
+            }
         });
     </script>
