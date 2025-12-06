@@ -128,25 +128,22 @@
             text-decoration: none;
             font-weight: 600;
         }
-        .error-message {
-            background: rgba(255, 69, 58, 0.1);
-            border: 1px solid rgba(255, 69, 58, 0.3);
-            color: #FF453A;
+        .message {
             padding: 12px;
             border-radius: 10px;
             font-size: 13px;
             margin-bottom: 20px;
             display: none;
         }
+        .error-message {
+            background: rgba(255, 69, 58, 0.1);
+            border: 1px solid rgba(255, 69, 58, 0.3);
+            color: #FF453A;
+        }
         .success-message {
             background: rgba(48, 209, 88, 0.1);
             border: 1px solid rgba(48, 209, 88, 0.3);
             color: #30D158;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 13px;
-            margin-bottom: 20px;
-            display: none;
         }
         
         /* Main App */
@@ -419,134 +416,6 @@
         .signals-list {
             padding: 12px;
         }
-        .signal-card {
-            background: #1C1C1E;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-left: 3px solid #007AFF;
-        }
-        .signal-card.bullish {
-            border-left-color: #30D158;
-        }
-        .signal-card.bearish {
-            border-left-color: #FF453A;
-        }
-        .signal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-        .signal-name {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .signal-symbol {
-            font-size: 11px;
-            color: #8E8E93;
-            margin-top: 2px;
-        }
-        .signal-badge {
-            background: rgba(0, 122, 255, 0.2);
-            color: #007AFF;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .signal-badge.bullish {
-            background: rgba(48, 209, 88, 0.2);
-            color: #30D158;
-        }
-        .signal-badge.bearish {
-            background: rgba(255, 69, 58, 0.2);
-            color: #FF453A;
-        }
-        .signal-details {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        .signal-detail {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-        }
-        .detail-label {
-            color: #8E8E93;
-        }
-        .detail-value {
-            font-weight: 600;
-        }
-        
-        .price-targets {
-            margin-top: 10px;
-            padding: 8px;
-            background: #2C2C2E;
-            border-radius: 8px;
-        }
-        .target-label {
-            font-size: 10px;
-            color: #8E8E93;
-            margin-bottom: 6px;
-        }
-        .target-range {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 5px;
-        }
-        .target-bar {
-            flex: 1;
-            height: 6px;
-            border-radius: 3px;
-            position: relative;
-            overflow: hidden;
-        }
-        .target-bar.bullish {
-            background: linear-gradient(90deg, #8B5CF6 0%, #EF4444 100%);
-        }
-        .target-bar.bearish {
-            background: linear-gradient(90deg, #EF4444 0%, #8B5CF6 100%);
-        }
-        .target-price {
-            font-size: 10px;
-            font-weight: 600;
-            min-width: 55px;
-        }
-        .target-price.entry {
-            color: #8E8E93;
-        }
-        .target-price.tp {
-            color: #8B5CF6;
-        }
-        .target-price.sl {
-            color: #EF4444;
-        }
-        
-        .confidence-bar {
-            height: 3px;
-            background: #2C2C2E;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-        .confidence-fill {
-            height: 100%;
-            background: #007AFF;
-            transition: width 0.3s;
-        }
-        .confidence-fill.high {
-            background: #30D158;
-        }
-        .signal-time {
-            font-size: 10px;
-            color: #8E8E93;
-            margin-top: 6px;
-        }
-        
         .no-signals {
             text-align: center;
             padding: 60px 20px;
@@ -577,10 +446,6 @@
         .settings-label {
             font-size: 14px;
         }
-        .settings-value {
-            color: #8E8E93;
-            font-size: 13px;
-        }
         .toggle-switch {
             width: 45px;
             height: 26px;
@@ -607,9 +472,6 @@
             left: 21px;
         }
         
-        .green { color: #30D158; }
-        .red { color: #FF453A; }
-        
         .status-indicator {
             display: inline-block;
             width: 6px;
@@ -634,8 +496,8 @@
                 <div class="auth-logo-text">FOREX PRO</div>
             </div>
             <div class="auth-subtitle">Smart Market Concepts Trading</div>
-            <div class="error-message" id="loginError"></div>
-            <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="message error-message" id="loginError"></div>
+            <form id="loginForm">
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" class="form-input" placeholder="your@email.com" required id="loginEmail">
@@ -647,10 +509,10 @@
                 <button type="submit" class="auth-btn">Sign In</button>
             </form>
             <div class="auth-link">
-                <a href="#" onclick="showPage('forgotPage')">Forgot Password?</a>
+                <a href="#" id="forgotLink">Forgot Password?</a>
             </div>
             <div class="auth-link">
-                Don't have an account? <a href="#" onclick="showPage('registerPage')">Sign Up</a>
+                Don't have an account? <a href="#" id="signupLink">Sign Up</a>
             </div>
         </div>
     </div>
@@ -663,9 +525,9 @@
                 <div class="auth-logo-text">FOREX PRO</div>
             </div>
             <div class="auth-subtitle">Create Your Trading Account</div>
-            <div class="error-message" id="registerError"></div>
-            <div class="success-message" id="registerSuccess"></div>
-            <form id="registerForm" onsubmit="handleRegister(event)">
+            <div class="message error-message" id="registerError"></div>
+            <div class="message success-message" id="registerSuccess"></div>
+            <form id="registerForm">
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">First Name</label>
@@ -695,7 +557,7 @@
                 <button type="submit" class="auth-btn">Create Account</button>
             </form>
             <div class="auth-link">
-                Already have an account? <a href="#" onclick="showPage('loginPage')">Sign In</a>
+                Already have an account? <a href="#" id="loginLink">Sign In</a>
             </div>
         </div>
     </div>
@@ -708,23 +570,27 @@
                 <div class="auth-logo-text">Reset Password</div>
             </div>
             <div class="auth-subtitle">Enter your email to reset your password</div>
-            <div class="error-message" id="forgotError"></div>
-            <div class="success-message" id="forgotSuccess"></div>
-            <form id="forgotForm" onsubmit="handleForgotPassword(event)">
+            <div class="message error-message" id="forgotError"></div>
+            <div class="message success-message" id="forgotSuccess"></div>
+            <form id="forgotForm">
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" class="form-input" placeholder="your@email.com" required id="forgotEmail">
                 </div>
-                <div class="form-group" id="resetFields" style="display: none;">
-                    <label class="form-label">New Password</label>
-                    <input type="password" class="form-input" placeholder="Min 8 characters" id="forgotNewPassword" minlength="8">
-                    <label class="form-label" style="margin-top: 12px;">Confirm New Password</label>
-                    <input type="password" class="form-input" placeholder="Re-enter password" id="forgotConfirmPassword" minlength="8">
+                <div id="resetFields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-input" placeholder="Min 8 characters" id="forgotNewPassword" minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-input" placeholder="Re-enter password" id="forgotConfirmPassword" minlength="8">
+                    </div>
                 </div>
                 <button type="submit" class="auth-btn" id="forgotBtn">Continue</button>
             </form>
             <div class="auth-link">
-                <a href="#" onclick="showPage('loginPage')">Back to Sign In</a>
+                <a href="#" id="backToLoginLink">Back to Sign In</a>
             </div>
         </div>
     </div>
@@ -742,108 +608,348 @@
             </div>
             <div class="header-right">
                 <span class="status-indicator status-disconnected" id="connectionStatus"></span>
-                <button class="logout-btn" onclick="handleLogout()">Logout</button>
+                <button class="logout-btn" id="logoutBtn">Logout</button>
             </div>
         </div>
 
         <!-- Charts Page -->
         <div class="page-container active" id="chartsPage">
             <div class="chart-toolbar">
-                <select class="toolbar-select" id="numCharts" onchange="changeNumCharts()">
+                <select class="toolbar-select" id="numCharts">
                     <option value="1" selected>1 Chart</option>
                     <option value="2">2 Charts</option>
                     <option value="3">3 Charts</option>
                     <option value="4">4 Charts</option>
                 </select>
-                <button class="toolbar-btn" onclick="startAllCharts()">▶</button>
-                <button class="toolbar-btn" onclick="stopAllCharts()">⏸</button>
-                <button class="toolbar-btn" onclick="refreshAllCharts()">🔄</button>
-                <button class="toolbar-btn active" id="analysisToggle" onclick="toggleAnalysis()">SMC</button>
+                <button class="toolbar-btn" id="startBtn">▶</button>
+                <button class="toolbar-btn" id="stopBtn">⏸</button>
+                <button class="toolbar-btn" id="refreshBtn">🔄</button>
+                <button class="toolbar-btn active" id="analysisToggle">SMC</button>
             </div>
 
             <div class="chart-view">
-                <!-- Chart 1 -->
                 <div class="single-chart active" id="chart1">
                     <div class="chart-info-bar">
                         <div class="info-item">
                             <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName1">US 100</div>
+                            <div class="info-value">US 100</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Price</div>
-                            <div class="info-value" id="price1">--</div>
+                            <div class="info-value">--</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Change</div>
-                            <div class="info-value" id="change1">--</div>
+                            <div class="info-value">--</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">H/L</div>
-                            <div class="info-value" id="highlow1">--</div>
+                            <div class="info-value">--</div>
                         </div>
                     </div>
                     <div class="chart-toolbar">
-                        <select class="toolbar-select" id="symbol1" onchange="updateChart(1)">
+                        <select class="toolbar-select">
                             <option value="US100" selected>US 100</option>
                             <option value="XAUUSD">GOLD</option>
                             <option value="EURUSD">EUR/USD</option>
                             <option value="GBPUSD">GBP/USD</option>
-                            <option value="AUDUSD">AUD/USD</option>
-                            <option value="AUDCAD">AUD/CAD</option>
                         </select>
-                        <select class="toolbar-select" id="timeframe1" onchange="updateChart(1)">
+                        <select class="toolbar-select">
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
                             <option value="3600">1H</option>
-                            <option value="14400">4H</option>
                         </select>
                     </div>
                     <div class="chart-canvas-container">
                         <canvas id="canvas1"></canvas>
                         <div class="zoom-controls">
-                            <button class="zoom-btn" onclick="zoom(1, 'in')">+</button>
-                            <button class="zoom-btn" onclick="zoom(1, 'out')">−</button>
+                            <button class="zoom-btn">+</button>
+                            <button class="zoom-btn">−</button>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Chart 2 -->
-                <div class="single-chart" id="chart2">
-                    <div class="chart-info-bar">
-                        <div class="info-item">
-                            <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName2">GOLD</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Price</div>
-                            <div class="info-value" id="price2">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Change</div>
-                            <div class="info-value" id="change2">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">H/L</div>
-                            <div class="info-value" id="highlow2">--</div>
-                        </div>
+            <div class="chart-tabs" id="chartTabs">
+                <div class="chart-tab active">Chart 1</div>
+            </div>
+        </div>
+
+        <!-- Signals Page -->
+        <div class="page-container" id="signalsPage">
+            <div class="signals-header">
+                <div class="signals-title">SMC Signals</div>
+                <div class="signals-controls">
+                    <button class="signal-filter-btn active">All</button>
+                    <button class="signal-filter-btn">Bullish</button>
+                    <button class="signal-filter-btn">Bearish</button>
+                </div>
+            </div>
+            <div class="signals-list">
+                <div class="no-signals">
+                    <div class="no-signals-icon">📊</div>
+                    <div>No signals detected yet</div>
+                    <div style="font-size: 12px; margin-top: 8px;">Start charts to detect SMC patterns</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div class="page-container" id="settingsPage">
+            <div class="settings-section">
+                <div class="settings-item">
+                    <div class="settings-label">SMC Analysis</div>
+                    <div class="toggle-switch active">
+                        <div class="toggle-thumb"></div>
                     </div>
-                    <div class="chart-toolbar">
-                        <select class="toolbar-select" id="symbol2" onchange="updateChart(2)">
-                            <option value="US100">US 100</option>
-                            <option value="XAUUSD" selected>GOLD</option>
-                            <option value="EURUSD">EUR/USD</option>
-                            <option value="GBPUSD">GBP/USD</option>
-                            <option value="AUDUSD">AUD/USD</option>
-                            <option value="AUDCAD">AUD/CAD</option>
-                        </select>
-                        <select class="toolbar-select" id="timeframe2" onchange="updateChart(2)">
-                            <option value="300">5M</option>
-                            <option value="900" selected>15M</option>
-                            <option value="1800">30M</option>
-                            <option value="3600">1H</option>
-                            <option value="14400">4H</option>
-                        </select>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-label">Show Order Blocks</div>
+                    <div class="toggle-switch active">
+                        <div class="toggle-thumb"></div>
                     </div>
-                    <div class="chart-canvas-container">
-                        <canvas
+                </div>
+                <div class="settings-item">
+                    <div class="settings-label">Show FVG</div>
+                    <div class="toggle-switch active">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-label">Sound Alerts</div>
+                    <div class="toggle-switch active">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="mt5-bottom-nav">
+            <div class="nav-item active" data-page="chartsPage">
+                <div class="nav-icon">📈</div>
+                <div class="nav-label">Charts</div>
+            </div>
+            <div class="nav-item" data-page="signalsPage">
+                <div class="nav-icon">🎯</div>
+                <div class="nav-label">Signals</div>
+            </div>
+            <div class="nav-item" data-page="settingsPage">
+                <div class="nav-icon">⚙️</div>
+                <div class="nav-label">Settings</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Database
+        const db = {};
+        let currentUser = null;
+        let forgotStep = 1;
+
+        // Show page
+        function showPage(pageId) {
+            document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
+        }
+
+        // Show message
+        function showMessage(id, text) {
+            const el = document.getElementById(id);
+            el.textContent = text;
+            el.style.display = 'block';
+        }
+
+        // Hide message
+        function hideMessages() {
+            document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
+        }
+
+        // Register
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            hideMessages();
+            
+            const firstName = document.getElementById('regFirstName').value.trim();
+            const lastName = document.getElementById('regLastName').value.trim();
+            const email = document.getElementById('regEmail').value.trim().toLowerCase();
+            const phone = document.getElementById('regPhone').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+            if (password !== confirmPassword) {
+                showMessage('registerError', 'Passwords do not match!');
+                return;
+            }
+
+            if (password.length < 8) {
+                showMessage('registerError', 'Password must be at least 8 characters!');
+                return;
+            }
+
+            if (db[email]) {
+                showMessage('registerError', 'Email already registered!');
+                return;
+            }
+
+            db[email] = { firstName, lastName, email, phone, password };
+            showMessage('registerSuccess', 'Account created! Redirecting...');
+            
+            setTimeout(() => {
+                this.reset();
+                showPage('loginPage');
+            }, 2000);
+        });
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            hideMessages();
+            
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!db[email]) {
+                showMessage('loginError', 'Email not found!');
+                return;
+            }
+
+            if (db[email].password !== password) {
+                showMessage('loginError', 'Incorrect password!');
+                return;
+            }
+
+            currentUser = db[email];
+            document.getElementById('userNameDisplay').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+            document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
+            document.getElementById('appContainer').classList.add('active');
+        });
+
+        // Forgot Password
+        document.getElementById('forgotForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            hideMessages();
+            
+            const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+
+            if (forgotStep === 1) {
+                if (!db[email]) {
+                    showMessage('forgotError', 'Email not found!');
+                    return;
+                }
+
+                document.getElementById('resetFields').style.display = 'block';
+                document.getElementById('forgotBtn').textContent = 'Reset Password';
+                showMessage('forgotSuccess', 'Email verified! Enter new password.');
+                forgotStep = 2;
+            } else {
+                const newPassword = document.getElementById('forgotNewPassword').value;
+                const confirmPassword = document.getElementById('forgotConfirmPassword').value;
+
+                if (newPassword !== confirmPassword) {
+                    showMessage('forgotError', 'Passwords do not match!');
+                    return;
+                }
+
+                if (newPassword.length < 8) {
+                    showMessage('forgotError', 'Password must be at least 8 characters!');
+                    return;
+                }
+
+                db[email].password = newPassword;
+                showMessage('forgotSuccess', 'Password reset! Redirecting...');
+                
+                setTimeout(() => {
+                    this.reset();
+                    document.getElementById('resetFields').style.display = 'none';
+                    document.getElementById('forgotBtn').textContent = 'Continue';
+                    forgotStep = 1;
+                    showPage('loginPage');
+                }, 2000);
+            }
+        });
+
+        // Navigation links
+        document.getElementById('signupLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage('registerPage');
+        });
+
+        document.getElementById('loginLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage('loginPage');
+        });
+
+        document.getElementById('forgotLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage('forgotPage');
+        });
+
+        document.getElementById('backToLoginLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('forgotForm').reset();
+            document.getElementById('resetFields').style.display = 'none';
+            document.getElementById('forgotBtn').textContent = 'Continue';
+            forgotStep = 1;
+            showPage('loginPage');
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to logout?')) {
+                currentUser = null;
+                document.getElementById('appContainer').classList.remove('active');
+                showPage('loginPage');
+                document.getElementById('loginForm').reset();
+            }
+        });
+
+        // Bottom Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const pageId = this.getAttribute('data-page');
+                document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Chart controls
+        document.getElementById('numCharts').addEventListener('change', function() {
+            console.log('Chart count changed:', this.value);
+        });
+
+        document.getElementById('startBtn').addEventListener('click', function() {
+            document.getElementById('connectionStatus').className = 'status-indicator status-connected';
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', function() {
+            document.getElementById('connectionStatus').className = 'status-indicator status-disconnected';
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            console.log('Refreshing charts...');
+        });
+
+        document.getElementById('analysisToggle').addEventListener('click', function() {
+            this.classList.toggle('active');
+        });
+
+        // Toggle switches
+        document.querySelectorAll('.toggle-switch').forEach(toggle => {
+            toggle.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+
+        // Signal filters
+        document.querySelectorAll('.signal-filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.signal-filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
