@@ -41,7 +41,7 @@ class ChartManager {
             bos: [],
             choch: [],
             swingPoints: [],
-            marketStructure: 'ranging' // uptrend, downtrend, ranging
+            marketStructure: 'ranging'
         };
         
         this.resizeCanvas();
@@ -91,13 +91,11 @@ class ChartManager {
             updateConnectionStatus(true);
             const apiSymbol = SYMBOL_CONFIG[this.symbol].apiSymbol;
             
-            // Subscribe to ticks
             this.ws.send(JSON.stringify({ 
                 ticks: apiSymbol, 
                 subscribe: 1 
             }));
             
-            // Get historical candles
             this.ws.send(JSON.stringify({
                 ticks_history: apiSymbol,
                 count: 1000,
@@ -111,7 +109,6 @@ class ChartManager {
             const data = JSON.parse(event.data);
             
             if (data.candles) {
-                // Load historical data
                 this.data = data.candles.map(c => ({
                     x: c.epoch * 1000,
                     o: parseFloat(c.open),
@@ -123,10 +120,8 @@ class ChartManager {
                 this.updateInfo();
                 if (analysisEnabled) this.analyzeSMC();
             } else if (data.tick) {
-                // Update with live tick
                 this.updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
             } else if (data.ohlc) {
-                // Update candle
                 const candle = data.ohlc;
                 this.updateCandle({
                     x: candle.epoch * 1000,
@@ -146,7 +141,6 @@ class ChartManager {
         const candleStart = Math.floor(time / (this.timeframe * 1000)) * (this.timeframe * 1000);
         
         if (!this.data.length || candleStart > this.data[this.data.length - 1].x) {
-            // New candle
             this.data.push({ 
                 x: candleStart, 
                 o: price, 
@@ -157,7 +151,6 @@ class ChartManager {
             if (this.data.length > 1000) this.data.shift();
             if (analysisEnabled) this.analyzeSMC();
         } else {
-            // Update current candle
             const last = this.data[this.data.length - 1];
             last.c = price;
             last.h = Math.max(last.h, price);
@@ -189,9 +182,8 @@ class ChartManager {
     analyzeSMC() {
         if (this.data.length < 50) return;
         
-        // Clear old data but keep recent structures
         const currentTime = this.data[this.data.length - 1].x;
-        const keepDuration = this.timeframe * 100 * 1000; // Keep structures from last 100 candles
+        const keepDuration = this.timeframe * 100 * 1000;
         
         this.smcData.orderBlocks = this.smcData.orderBlocks.filter(ob => 
             currentTime - ob.time < keepDuration
@@ -200,28 +192,13 @@ class ChartManager {
             currentTime - fvg.time < keepDuration && !fvg.filled
         );
         
-        // Identify swing points
         this.identifySwingPoints();
-        
-        // Detect market structure
         this.detectMarketStructure();
-        
-        // Detect Order Blocks
         this.detectOrderBlocks();
-        
-        // Detect Fair Value Gaps
         this.detectFairValueGaps();
-        
-        // Detect Liquidity Zones
         this.detectLiquidityZones();
-        
-        // Detect BOS (Break of Structure)
         this.detectBreakOfStructure();
-        
-        // Detect CHoCH (Change of Character)
         this.detectChangeOfCharacter();
-        
-        // Check FVG fills
         this.checkFVGFills();
         
         this.draw();
@@ -232,7 +209,6 @@ class ChartManager {
         const recentSwings = [];
         
         for (let i = lookback; i < this.data.length - lookback; i++) {
-            // Swing High
             let isSwingHigh = true;
             for (let j = 1; j <= lookback; j++) {
                 if (this.data[i].h <= this.data[i - j].h || this.data[i].h <= this.data[i + j].h) {
@@ -250,7 +226,6 @@ class ChartManager {
                 });
             }
             
-            // Swing Low
             let isSwingLow = true;
             for (let j = 1; j <= lookback; j++) {
                 if (this.data[i].l >= this.data[i - j].l || this.data[i].l >= this.data[i + j].l) {
@@ -281,7 +256,6 @@ class ChartManager {
             return;
         }
         
-        // Check for higher highs and higher lows (uptrend)
         const recentHighs = swingHighs.slice(-2);
         const recentLows = swingLows.slice(-2);
         
@@ -304,9 +278,7 @@ class ChartManager {
         for (let i = 3; i < this.data.length - 1; i++) {
             const current = this.data[i];
             const prev = this.data[i - 1];
-            const next = this.data[i + 1];
             
-            // Bullish Order Block: Last bearish candle before strong bullish impulse
             const isBearishCandle = prev.c < prev.o;
             const strongBullishMove = current.c > current.o && 
                                      (current.c - current.o) > (prev.o - prev.c) * 1.5;
@@ -327,14 +299,12 @@ class ChartManager {
                         tested: false
                     });
                     
-                    // Generate signal if price is near OB
                     if (i === this.data.length - 2 && current.l <= prev.o * 1.001) {
                         this.generateSignal('Bullish Order Block', 'bullish', prev);
                     }
                 }
             }
             
-            // Bearish Order Block: Last bullish candle before strong bearish impulse
             const isBullishCandle = prev.c > prev.o;
             const strongBearishMove = current.c < current.o && 
                                      (current.o - current.c) > (prev.c - prev.o) * 1.5;
@@ -355,7 +325,6 @@ class ChartManager {
                         tested: false
                     });
                     
-                    // Generate signal if price is near OB
                     if (i === this.data.length - 2 && current.h >= prev.o * 0.999) {
                         this.generateSignal('Bearish Order Block', 'bearish', prev);
                     }
@@ -363,7 +332,6 @@ class ChartManager {
             }
         }
         
-        // Keep only recent and untested OBs
         this.smcData.orderBlocks = this.smcData.orderBlocks.slice(-15);
     }
 
@@ -373,7 +341,6 @@ class ChartManager {
             const prev = this.data[i - 1];
             const prev2 = this.data[i - 2];
             
-            // Bullish FVG: Gap up
             if (current.l > prev2.h) {
                 const gapSize = current.l - prev2.h;
                 const avgCandle = (prev.h - prev.l);
@@ -400,7 +367,6 @@ class ChartManager {
                 }
             }
             
-            // Bearish FVG: Gap down
             if (current.h < prev2.l) {
                 const gapSize = prev2.l - current.h;
                 const avgCandle = (prev.h - prev.l);
@@ -447,13 +413,12 @@ class ChartManager {
         
         this.smcData.liquidityZones = [];
         
-        // Equal Highs (Sell-Side Liquidity)
         for (let i = 0; i < swingHighs.length - 1; i++) {
             for (let j = i + 1; j < swingHighs.length; j++) {
                 const priceDiff = Math.abs(swingHighs[i].price - swingHighs[j].price);
                 const avgPrice = (swingHighs[i].price + swingHighs[j].price) / 2;
                 
-                if (priceDiff / avgPrice < 0.003) { // Within 0.3%
+                if (priceDiff / avgPrice < 0.003) {
                     this.smcData.liquidityZones.push({
                         type: 'equal_highs',
                         price: avgPrice,
@@ -464,7 +429,6 @@ class ChartManager {
             }
         }
         
-        // Equal Lows (Buy-Side Liquidity)
         for (let i = 0; i < swingLows.length - 1; i++) {
             for (let j = i + 1; j < swingLows.length; j++) {
                 const priceDiff = Math.abs(swingLows[i].price - swingLows[j].price);
@@ -481,7 +445,6 @@ class ChartManager {
             }
         }
         
-        // Remove duplicates
         const unique = [];
         this.smcData.liquidityZones.forEach(lz => {
             const exists = unique.some(u => 
@@ -499,7 +462,6 @@ class ChartManager {
         
         this.smcData.bos = [];
         
-        // Bullish BOS: Break above previous swing high
         for (let i = 1; i < swingHighs.length; i++) {
             const current = swingHighs[i];
             const prev = swingHighs[i - 1];
@@ -519,7 +481,6 @@ class ChartManager {
             }
         }
         
-        // Bearish BOS: Break below previous swing low
         for (let i = 1; i < swingLows.length; i++) {
             const current = swingLows[i];
             const prev = swingLows[i - 1];
@@ -552,7 +513,6 @@ class ChartManager {
             const prev = swingPoints[i - 1];
             const prev2 = swingPoints[i - 2];
             
-            // Bullish CHoCH: Downtrend breaks with higher high
             if (prev2.type === 'high' && prev.type === 'low' && current.type === 'high') {
                 if (current.price > prev2.price && prev.price < prev2.price) {
                     this.smcData.choch.push({
@@ -568,7 +528,6 @@ class ChartManager {
                 }
             }
             
-            // Bearish CHoCH: Uptrend breaks with lower low
             if (prev2.type === 'low' && prev.type === 'high' && current.type === 'low') {
                 if (current.price < prev2.price && prev.price > prev2.price) {
                     this.smcData.choch.push({
@@ -596,14 +555,12 @@ class ChartManager {
     }
 
     generateSignal(patternName, bias, referenceCandle) {
-        // Prevent duplicate signals within 5 minutes
         const now = Date.now();
         if (now - this.lastSignalTime < 300000) return;
         
         const currentPrice = this.data[this.data.length - 1].c;
         const symbolName = SYMBOL_CONFIG[this.symbol].name;
         
-        // Calculate entry, TP, SL based on SMC principles
         const atr = this.calculateATR(14);
         let entryPrice, tp1, tp2, tp3, sl;
         
@@ -666,13 +623,11 @@ class ChartManager {
     calculateConfidence(bias) {
         let confidence = 50;
         
-        // Market structure alignment
         if ((bias === 'bullish' && this.smcData.marketStructure === 'uptrend') ||
             (bias === 'bearish' && this.smcData.marketStructure === 'downtrend')) {
             confidence += 20;
         }
         
-        // Multiple SMC confirmations
         if (this.smcData.orderBlocks.length > 0) confidence += 10;
         if (this.smcData.fvgs.length > 0) confidence += 10;
         if (this.smcData.bos.length > 0) confidence += 5;
@@ -735,18 +690,13 @@ class ChartManager {
             return padding.left + spacing * visibleIdx + spacing / 2;
         };
         
-        // Draw grid
         this.drawGrid(padding, chartW, chartH, maxP, minP, range, pad, priceToY);
         
-        // Draw SMC elements if analysis is enabled
         if (analysisEnabled) {
             this.drawSMCElements(priceToY, indexToX, padding, chartW);
         }
         
-        // Draw candles
         this.drawCandles(visible, spacing, padding, priceToY, candleW);
-        
-        // Draw price scale
         this.drawPriceScale(padding, chartH, maxP, minP, range, pad);
     }
 
@@ -763,7 +713,7 @@ class ChartManager {
         }
     }
 
-    drawPriceScale(padding, chartH, maxP, minP, range, pad) {
+drawPriceScale(padding, chartH, maxP, minP, range, pad) {
         this.ctx.fillStyle = '#8E8E93';
         this.ctx.font = '10px -apple-system';
         this.ctx.textAlign = 'left';
@@ -796,7 +746,7 @@ class ChartManager {
                 this.ctx.fillStyle = ob.type === 'bullish' ? '#30D158' : '#FF453A';
                 this.ctx.font = 'bold 10px -apple-system';
                 this.ctx.textAlign = 'left';
-                this.ctx.fillText('BOS', x + 5, y1 + 14);
+                this.ctx.fillText('OB', x + 5, y1 + 14);
                 this.ctx.restore();
             }
         });
@@ -872,6 +822,21 @@ class ChartManager {
                 }
                 this.ctx.closePath();
                 this.ctx.fill();
+                this.ctx.restore();
+            }
+        });
+        
+        // Draw BOS markers
+        this.smcData.bos.forEach(bos => {
+            if (bos.index >= this.offset && bos.index < this.offset + this.zoom) {
+                this.ctx.save();
+                const x = indexToX(bos.index);
+                const y = priceToY(bos.type === 'bullish' ? bos.newPrice : bos.newPrice);
+                
+                this.ctx.fillStyle = bos.type === 'bullish' ? '#30D158' : '#FF453A';
+                this.ctx.font = 'bold 9px -apple-system';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('BOS', x, y + (bos.type === 'bullish' ? -5 : 15));
                 this.ctx.restore();
             }
         });
@@ -1004,34 +969,27 @@ function switchPage(pageId) {
     }
 }
 
-function switchChart(chartId) {
-    document.querySelectorAll('.single-chart').forEach(c => c.classList.remove('active'));
-    document.getElementById(`chart${chartId}`).classList.add('active');
-    
-    document.querySelectorAll('.chart-tab').forEach((tab, idx) => {
-        tab.classList.remove('active');
-        if (idx === chartId - 1) tab.classList.add('active');
-    });
-    
-    currentChartView = chartId;
-    charts[chartId].resizeCanvas();
-    charts[chartId].draw();
-}
-
 function changeNumCharts() {
     numActiveCharts = parseInt(document.getElementById('numCharts').value);
-    const tabs = document.getElementById('chartTabs');
-    tabs.innerHTML = '';
     
-    for (let i = 1; i <= numActiveCharts; i++) {
-        const tab = document.createElement('div');
-        tab.className = `chart-tab ${i === 1 ? 'active' : ''}`;
-        tab.textContent = `Chart ${i}`;
-        tab.onclick = () => switchChart(i);
-        tabs.appendChild(tab);
+    const chartView = document.querySelector('.chart-view');
+    chartView.className = 'chart-view grid-' + numActiveCharts;
+    
+    for (let i = 1; i <= 4; i++) {
+        const chartEl = document.getElementById(`chart${i}`);
+        if (i <= numActiveCharts) {
+            chartEl.classList.add('active');
+        } else {
+            chartEl.classList.remove('active');
+        }
     }
     
-    switchChart(1);
+    setTimeout(() => {
+        Object.values(charts).forEach(chart => {
+            chart.resizeCanvas();
+            chart.draw();
+        });
+    }, 100);
 }
 
 function updateChart(id) {
@@ -1098,12 +1056,11 @@ function updateConnectionStatus(connected) {
 // ============ SIGNAL MANAGEMENT ============
 
 function addSignal(signal) {
-    // Check for duplicate signals
     const exists = allSignals.find(s => 
         s.name === signal.name && 
         s.chartId === signal.chartId && 
         s.bias === signal.bias &&
-        Date.now() - s.timestamp < 300000 // 5 minutes
+        Date.now() - s.timestamp < 300000
     );
     
     if (exists) return;
@@ -1113,7 +1070,6 @@ function addSignal(signal) {
     
     saveSignalToFirebase(signal);
     
-    // High confidence alert
     if (signal.confidence >= 70) {
         playSound();
         
@@ -1213,19 +1169,7 @@ function displaySignals() {
                         <span class="detail-value">1:${s.rr}</span>
                     </div>
                 </div>
-                <div class="price-targets">
-                    <div class="target-label">Structure: ${s.marketStructure.toUpperCase()}</div>
-                    <div class="target-range">
-                        <span class="target-price sl">SL ${s.sl}</span>
-                        <div class="target-bar ${s.bias}"></div>
-                        <span class="target-price tp">TP ${s.tp3}</span>
-                    </div>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill ${s.confidence >= 70 ? 'high' : ''}" 
-                             style="width: ${s.confidence}%"></div>
-                    </div>
-                </div>
-                <div class="signal-time">${timeAgo} • Confidence: ${s.confidence}%</div>
+                <div class="signal-time">${timeAgo} • Confidence: ${s.confidence}% • Structure: ${s.marketStructure.toUpperCase()}</div>
             </div>
         `;
     }).join('');
@@ -1296,15 +1240,12 @@ function playSound() {
 // ============ INITIALIZATION ============
 
 window.addEventListener('load', () => {
-    // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
     
-    // Load saved signals
     loadSignalsFromFirebase();
     
-    // Handle window resize
     window.addEventListener('resize', () => {
         Object.values(charts).forEach(c => {
             c.resizeCanvas();
@@ -1312,7 +1253,6 @@ window.addEventListener('load', () => {
         });
     });
     
-    // Auto-start first chart after short delay
     setTimeout(() => {
         charts[1].connect();
     }, 500);
