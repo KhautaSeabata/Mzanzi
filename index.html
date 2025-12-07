@@ -19,7 +19,6 @@
             height: 100vh;
         }
         
-        /* MT5 Header */
         .mt5-header {
             background: #1C1C1E;
             padding: 10px 15px;
@@ -74,7 +73,6 @@
             background: #FF453A;
         }
         
-        /* Bottom Navigation */
         .mt5-bottom-nav {
             position: fixed;
             bottom: 0;
@@ -109,7 +107,6 @@
             font-weight: 500;
         }
         
-        /* Pages */
         .page-container {
             display: none;
             height: calc(100vh - 115px);
@@ -119,7 +116,6 @@
             display: block;
         }
         
-        /* Charts Page */
         .chart-toolbar {
             background: #1C1C1E;
             padding: 8px 12px;
@@ -269,7 +265,6 @@
             backdrop-filter: blur(10px);
         }
         
-        /* Signals Page */
         .signals-header {
             background: #1C1C1E;
             padding: 12px 15px;
@@ -352,33 +347,37 @@
             background: rgba(255, 69, 58, 0.2);
             color: #FF453A;
         }
-        .signal-info {
+        .signal-details {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            margin-top: 12px;
+            margin-bottom: 12px;
         }
-        .signal-info-item {
-            background: #2C2C2E;
-            padding: 8px;
-            border-radius: 8px;
+        .signal-detail {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
-        .signal-info-label {
+        .detail-label {
             font-size: 10px;
             color: #8E8E93;
-            margin-bottom: 4px;
         }
-        .signal-info-value {
-            font-size: 14px;
+        .detail-value {
+            font-size: 12px;
             font-weight: 600;
+        }
+        .detail-value.green {
+            color: #30D158;
+        }
+        .detail-value.red {
+            color: #FF453A;
         }
         .signal-time {
             font-size: 11px;
             color: #636366;
-            margin-top: 10px;
+            margin-top: 8px;
         }
         
-        /* Settings Page */
         .settings-section {
             background: #1C1C1E;
             margin: 12px;
@@ -426,9 +425,7 @@
     </style>
 </head>
 <body>
-    <!-- Main App Container -->
     <div class="app-container">
-        <!-- Header -->
         <div class="mt5-header">
             <div class="header-left">
                 <div class="mt5-logo">FOREX PRO</div>
@@ -442,23 +439,21 @@
             </div>
         </div>
 
-        <!-- Charts Page -->
         <div class="page-container active" id="chartsPage">
             <div class="chart-toolbar">
-                <select class="toolbar-select" id="numCharts">
+                <select class="toolbar-select" id="numCharts" onchange="changeNumCharts()">
                     <option value="1">1 Chart</option>
                     <option value="2">2 Charts</option>
                     <option value="3">3 Charts</option>
                     <option value="4" selected>4 Charts</option>
                 </select>
-                <button class="toolbar-btn" id="startBtn">▶</button>
-                <button class="toolbar-btn" id="stopBtn">⏸</button>
-                <button class="toolbar-btn" id="refreshBtn">🔄</button>
-                <button class="toolbar-btn active" id="analysisToggle">SMC</button>
+                <button class="toolbar-btn" id="startBtn" onclick="startAllCharts()">▶</button>
+                <button class="toolbar-btn" id="stopBtn" onclick="stopAllCharts()">⏸</button>
+                <button class="toolbar-btn" id="refreshBtn" onclick="refreshAllCharts()">🔄</button>
+                <button class="toolbar-btn active" id="analysisToggle" onclick="toggleAnalysis()">📊 SMC</button>
             </div>
 
-            <div class="chart-view grid-4">
-                <!-- Chart 1 -->
+            <div class="chart-view grid-4" id="chartView">
                 <div class="single-chart active" id="chart1">
                     <div class="chart-info-bar">
                         <div class="info-item">
@@ -473,15 +468,19 @@
                             <div class="info-label">Change</div>
                             <div class="info-value" id="change1">--</div>
                         </div>
+                        <div class="info-item">
+                            <div class="info-label">H/L</div>
+                            <div class="info-value" id="highlow1">--</div>
+                        </div>
                     </div>
                     <div class="chart-controls">
-                        <select class="chart-symbol" id="symbol1">
+                        <select id="symbol1" onchange="updateChart(1)">
                             <option value="XAUUSD" selected>GOLD</option>
                             <option value="EURUSD">EUR/USD</option>
                             <option value="GBPUSD">GBP/USD</option>
-                            <option value="USDJPY">USD/JPY</option>
+                            <option value="AUDUSD">AUD/USD</option>
                         </select>
-                        <select class="chart-timeframe" id="timeframe1">
+                        <select id="timeframe1" onchange="updateChart(1)">
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
@@ -497,7 +496,6 @@
                     </div>
                 </div>
 
-                <!-- Chart 2 -->
                 <div class="single-chart active" id="chart2">
                     <div class="chart-info-bar">
                         <div class="info-item">
@@ -512,15 +510,19 @@
                             <div class="info-label">Change</div>
                             <div class="info-value" id="change2">--</div>
                         </div>
+                        <div class="info-item">
+                            <div class="info-label">H/L</div>
+                            <div class="info-value" id="highlow2">--</div>
+                        </div>
                     </div>
                     <div class="chart-controls">
-                        <select class="chart-symbol" id="symbol2">
+                        <select id="symbol2" onchange="updateChart(2)">
                             <option value="XAUUSD">GOLD</option>
                             <option value="EURUSD" selected>EUR/USD</option>
                             <option value="GBPUSD">GBP/USD</option>
-                            <option value="USDJPY">USD/JPY</option>
+                            <option value="AUDUSD">AUD/USD</option>
                         </select>
-                        <select class="chart-timeframe" id="timeframe2">
+                        <select id="timeframe2" onchange="updateChart(2)">
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
@@ -536,7 +538,6 @@
                     </div>
                 </div>
 
-                <!-- Chart 3 -->
                 <div class="single-chart active" id="chart3">
                     <div class="chart-info-bar">
                         <div class="info-item">
@@ -551,15 +552,19 @@
                             <div class="info-label">Change</div>
                             <div class="info-value" id="change3">--</div>
                         </div>
+                        <div class="info-item">
+                            <div class="info-label">H/L</div>
+                            <div class="info-value" id="highlow3">--</div>
+                        </div>
                     </div>
                     <div class="chart-controls">
-                        <select class="chart-symbol" id="symbol3">
+                        <select id="symbol3" onchange="updateChart(3)">
                             <option value="XAUUSD">GOLD</option>
                             <option value="EURUSD">EUR/USD</option>
                             <option value="GBPUSD" selected>GBP/USD</option>
-                            <option value="USDJPY">USD/JPY</option>
+                            <option value="AUDUSD">AUD/USD</option>
                         </select>
-                        <select class="chart-timeframe" id="timeframe3">
+                        <select id="timeframe3" onchange="updateChart(3)">
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
@@ -575,12 +580,11 @@
                     </div>
                 </div>
 
-                <!-- Chart 4 -->
                 <div class="single-chart active" id="chart4">
                     <div class="chart-info-bar">
                         <div class="info-item">
                             <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName4">USD/JPY</div>
+                            <div class="info-value" id="symbolName4">AUD/USD</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Price</div>
@@ -590,15 +594,19 @@
                             <div class="info-label">Change</div>
                             <div class="info-value" id="change4">--</div>
                         </div>
+                        <div class="info-item">
+                            <div class="info-label">H/L</div>
+                            <div class="info-value" id="highlow4">--</div>
+                        </div>
                     </div>
                     <div class="chart-controls">
-                        <select class="chart-symbol" id="symbol4">
+                        <select id="symbol4" onchange="updateChart(4)">
                             <option value="XAUUSD">GOLD</option>
                             <option value="EURUSD">EUR/USD</option>
                             <option value="GBPUSD">GBP/USD</option>
-                            <option value="USDJPY" selected>USD/JPY</option>
+                            <option value="AUDUSD" selected>AUD/USD</option>
                         </select>
-                        <select class="chart-timeframe" id="timeframe4">
+                        <select id="timeframe4" onchange="updateChart(4)">
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
@@ -616,7 +624,6 @@
             </div>
         </div>
 
-        <!-- Signals Page -->
         <div class="page-container" id="signalsPage">
             <div class="signals-header">
                 <div class="signals-title">SMC Signals</div>
@@ -635,7 +642,6 @@
             </div>
         </div>
 
-        <!-- Settings Page -->
         <div class="page-container" id="settingsPage">
             <div class="settings-section">
                 <div class="settings-item">
@@ -671,538 +677,22 @@
             </div>
         </div>
 
-        <!-- Bottom Navigation -->
         <div class="mt5-bottom-nav">
-            <div class="nav-item active" data-page="chartsPage">
+            <div class="nav-item active" onclick="switchPage('chartsPage')">
                 <div class="nav-icon">📈</div>
                 <div class="nav-label">Charts</div>
             </div>
-            <div class="nav-item" data-page="signalsPage">
+            <div class="nav-item" onclick="switchPage('signalsPage')">
                 <div class="nav-icon">🎯</div>
                 <div class="nav-label">Signals</div>
             </div>
-            <div class="nav-item" data-page="settingsPage">
+            <div class="nav-item" onclick="switchPage('settingsPage')">
                 <div class="nav-icon">⚙️</div>
                 <div class="nav-label">Settings</div>
             </div>
         </div>
     </div>
 
-    <script>
-        // ============ CHART SYSTEM ============
-        const SYMBOL_CONFIG = {
-            'XAUUSD': { name: 'GOLD', base: 2650 },
-            'EURUSD': { name: 'EUR/USD', base: 1.0850 },
-            'GBPUSD': { name: 'GBP/USD', base: 1.2650 },
-            'USDJPY': { name: 'USD/JPY', base: 149.50 }
-        };
-        
-        let charts = {};
-        let analysisEnabled = true;
-        let allSignals = [];
-        let signalFilter = 'all';
-        
-        class ChartManager {
-            constructor(id) {
-                this.id = id;
-                this.canvas = document.getElementById(`canvas${id}`);
-                this.ctx = this.canvas.getContext('2d');
-                this.data = [];
-                this.symbol = document.getElementById(`symbol${id}`).value;
-                this.timeframe = 300;
-                this.zoom = 80;
-                this.running = false;
-                this.lastSignalTime = 0;
-                
-                this.resizeCanvas();
-                this.setupEvents();
-                this.startSimulation();
-            }
-            
-            setupEvents() {
-                document.getElementById(`symbol${this.id}`).addEventListener('change', () => {
-                    this.symbol = document.getElementById(`symbol${this.id}`).value;
-                    this.data = [];
-                    this.startSimulation();
-                });
-                
-                document.getElementById(`timeframe${this.id}`).addEventListener('change', () => {
-                    this.timeframe = parseInt(document.getElementById(`timeframe${this.id}`).value);
-                    this.data = [];
-                    this.startSimulation();
-                });
-            }
-            
-            resizeCanvas() {
-                const container = this.canvas.parentElement;
-                this.canvas.width = container.clientWidth;
-                this.canvas.height = container.clientHeight;
-            }
-            
-            startSimulation() {
-                this.running = true;
-                const config = SYMBOL_CONFIG[this.symbol];
-                let price = config.base;
-                
-                const now = Date.now();
-                for (let i = 100; i >= 0; i--) {
-                    const time = now - (i * this.timeframe * 1000);
-                    const volatility = price * 0.002;
-                    const change = (Math.random() - 0.48) * volatility;
-                    const open = price;
-                    price += change;
-                    const high = Math.max(open, price) + Math.random() * volatility * 0.5;
-                    const low = Math.min(open, price) - Math.random() * volatility * 0.5;
-                    
-                    this.data.push({
-                        x: time,
-                        o: open,
-                        h: high,
-                        l: low,
-                        c: price
-                    });
-                }
-                
-                this.draw();
-                this.updateInfo();
-                
-                if (this.interval) clearInterval(this.interval);
-                
-                this.interval = setInterval(() => {
-                    if (this.running) {
-                        const last = this.data[this.data.length - 1];
-                        const volatility = last.c * 0.002;
-                        const change = (Math.random() - 0.48) * volatility;
-                        const newPrice = last.c + change;
-                        
-                        const now = Date.now();
-                        const candleStart = Math.floor(now / (this.timeframe * 1000)) * (this.timeframe * 1000);
-                        
-                        if (candleStart > last.x) {
-                            this.data.push({
-                                x: candleStart,
-                                o: last.c,
-                                h: Math.max(last.c, newPrice),
-                                l: Math.min(last.c, newPrice),
-                                c: newPrice
-                            });
-                            if (this.data.length > 200) this.data.shift();
-                            
-                            if (analysisEnabled && Math.random() > 0.95) {
-                                this.generateSignal();
-                            }
-                        } else {
-                            last.c = newPrice;
-                            last.h = Math.max(last.h, newPrice);
-                            last.l = Math.min(last.l, newPrice);
-                        }
-                        
-                        this.draw();
-                        this.updateInfo();
-                    }
-                }, 2000);
-            }
-            
-            generateSignal() {
-                const now = Date.now();
-                if (now - this.lastSignalTime < 300000) return;
-                
-                const patterns = [
-                    'Bullish Order Block', 'Bearish Order Block',
-                    'Bullish FVG', 'Bearish FVG',
-                    'Bullish BOS', 'Bearish BOS',
-                    'Bullish CHoCH', 'Bearish CHoCH'
-                ];
-                
-                const pattern = patterns[Math.floor(Math.random() * patterns.length)];
-                const bias = pattern.includes('Bullish') ? 'bullish' : 'bearish';
-                const current = this.data[this.data.length - 1];
-                const atr = this.calculateATR();
-                
-                let entry = current.c;
-                let tp1, tp2, tp3, sl;
-                
-                if (bias === 'bullish') {
-                    tp1 = entry + (atr * 1.5);
-                    tp2 = entry + (atr * 2.5);
-                    tp3 = entry + (atr * 3.5);
-                    sl = entry - (atr * 1.0);
-                } else {
-                    tp1 = entry - (atr * 1.5);
-                    tp2 = entry - (atr * 2.5);
-                    tp3 = entry - (atr * 3.5);
-                    sl = entry + (atr * 1.0);
-                }
-                
-                const rr = Math.abs((tp1 - entry) / (entry - sl));
-                const confidence = Math.floor(60 + Math.random() * 30);
-                
-                const signal = {
-                    id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                    name: pattern,
-                    bias: bias,
-                    symbol: SYMBOL_CONFIG[this.symbol].name,
-                    timeframe: this.getTimeframeLabel(),
-                    entry: entry.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
-                    tp1: tp1.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
-                    tp2: tp2.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
-                    tp3: tp3.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
-                    sl: sl.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
-                    rr: rr.toFixed(2),
-                    confidence: confidence,
-                    timestamp: Date.now()
-                };
-                
-                this.lastSignalTime = now;
-                addSignal(signal);
-            }
-            
-            calculateATR() {
-                if (this.data.length < 15) return 0.01;
-                
-                let atrSum = 0;
-                for (let i = this.data.length - 14; i < this.data.length; i++) {
-                    const current = this.data[i];
-                    const prev = this.data[i - 1];
-                    const tr = Math.max(
-                        current.h - current.l,
-                        Math.abs(current.h - prev.c),
-                        Math.abs(current.l - prev.c)
-                    );
-                    atrSum += tr;
-                }
-                
-                return atrSum / 14;
-            }
-            
-            getTimeframeLabel() {
-                const labels = { 300: '5M', 900: '15M', 1800: '30M', 3600: '1H' };
-                return labels[this.timeframe] || '5M';
-            }
-            
-            draw() {
-                if (!this.data.length) return;
-                
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                const padding = { top: 10, right: 40, bottom: 10, left: 5 };
-                const chartW = this.canvas.width - padding.left - padding.right;
-                const chartH = this.canvas.height - padding.top - padding.bottom;
-                
-                const visible = this.data.slice(-this.zoom);
-                if (!visible.length) return;
-                
-                const prices = visible.flatMap(c => [c.h, c.l]);
-                const maxP = Math.max(...prices);
-                const minP = Math.min(...prices);
-                const range = maxP - minP;
-                const pad = range * 0.1;
-                
-                const candleW = Math.max(1, Math.min(8, chartW / visible.length - 1));
-                const spacing = chartW / visible.length;
-                
-                const priceToY = (price) => {
-                    return padding.top + ((maxP + pad - price) / (range + pad * 2)) * chartH;
-                };
-                
-                // Grid
-                this.ctx.strokeStyle = '#2C2C2E';
-                this.ctx.lineWidth = 0.5;
-                for (let i = 0; i <= 4; i++) {
-                    const y = padding.top + (chartH / 4) * i;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(padding.left, y);
-                    this.ctx.lineTo(this.canvas.width - padding.right, y);
-                    this.ctx.stroke();
-                }
-                
-                // Candles
-                visible.forEach((c, i) => {
-                    const x = padding.left + spacing * i + spacing / 2;
-                    const yH = priceToY(c.h);
-                    const yL = priceToY(c.l);
-                    const yO = priceToY(c.o);
-                    const yC = priceToY(c.c);
-                    
-                    const isUp = c.c >= c.o;
-                    const color = isUp ? '#30D158' : '#FF453A';
-                    
-                    this.ctx.strokeStyle = color;
-                    this.ctx.lineWidth = Math.max(0.5, candleW / 4);
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(x, yH);
-                    this.ctx.lineTo(x, yL);
-                    this.ctx.stroke();
-                    
-                    this.ctx.fillStyle = color;
-                    const bodyH = Math.max(Math.abs(yC - yO), 1);
-                    this.ctx.fillRect(x - candleW / 2, Math.min(yO, yC), candleW, bodyH);
-                });
-                
-                // Price scale
-                this.ctx.fillStyle = '#8E8E93';
-                this.ctx.font = '8px -apple-system';
-                this.ctx.textAlign = 'left';
-                for (let i = 0; i <= 4; i++) {
-                    const price = maxP + pad - (range + pad * 2) * (i / 4);
-                    const y = padding.top + (chartH / 4) * i;
-                    const decimals = this.symbol === 'USDJPY' ? 2 : 4;
-                    this.ctx.fillText(price.toFixed(decimals), this.canvas.width - padding.right + 2, y + 3);
-                }
-            }
-            
-            updateInfo() {
-                if (!this.data.length) return;
-                
-                const current = this.data[this.data.length - 1];
-                const first = this.data[0];
-                const change = current.c - first.o;
-                const changePercent = (change / first.o) * 100;
-                
-                const decimals = this.symbol === 'USDJPY' ? 2 : 4;
-                
-                document.getElementById(`symbolName${this.id}`).textContent = SYMBOL_CONFIG[this.symbol].name;
-                document.getElementById(`price${this.id}`).textContent = current.c.toFixed(decimals);
-                
-                const changeEl = document.getElementById(`change${this.id}`);
-                changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
-                changeEl.className = `info-value ${changePercent >= 0 ? 'green' : 'red'}`;
-            }
-            
-            stop() {
-                this.running = false;
-                if (this.interval) clearInterval(this.interval);
-            }
-        }
-        
-        function initializeCharts() {
-            const numCharts = parseInt(document.getElementById('numCharts').value);
-            
-            // Stop and clear existing charts
-            Object.values(charts).forEach(chart => chart.stop());
-            charts = {};
-            
-            // Update grid layout
-            const chartView = document.querySelector('.chart-view');
-            chartView.className = 'chart-view grid-' + numCharts;
-            
-            // Show/hide charts
-            for (let i = 1; i <= 4; i++) {
-                const chartEl = document.getElementById(`chart${i}`);
-                if (i <= numCharts) {
-                    chartEl.classList.add('active');
-                    charts[i] = new ChartManager(i);
-                } else {
-                    chartEl.classList.remove('active');
-                }
-            }
-            
-            document.getElementById('connectionStatus').className = 'status-indicator status-connected';
-        }
-        
-        function startAllCharts() {
-            Object.values(charts).forEach(chart => chart.running = true);
-            document.getElementById('connectionStatus').className = 'status-indicator status-connected';
-        }
-        
-        function stopAllCharts() {
-            Object.values(charts).forEach(chart => chart.stop());
-            document.getElementById('connectionStatus').className = 'status-indicator status-disconnected';
-        }
-        
-        function zoom(id, dir) {
-            const chart = charts[id];
-            if (!chart) return;
-            if (dir === 'in') {
-                chart.zoom = Math.max(20, chart.zoom - 10);
-            } else {
-                chart.zoom = Math.min(150, chart.zoom + 10);
-            }
-            chart.draw();
-        }
-        
-        // ============ SIGNAL MANAGEMENT ============
-        
-        function addSignal(signal) {
-            const exists = allSignals.find(s => 
-                s.name === signal.name && 
-                s.bias === signal.bias &&
-                Date.now() - s.timestamp < 300000
-            );
-            
-            if (exists) return;
-            
-            allSignals.unshift(signal);
-            allSignals = allSignals.slice(0, 50);
-            
-            displaySignals();
-            
-            if (signal.confidence >= 70) {
-                playSound();
-            }
-        }
-        
-        function displaySignals() {
-            const container = document.getElementById('signalsList');
-            
-            let filtered = allSignals;
-            if (signalFilter !== 'all') {
-                filtered = allSignals.filter(s => s.bias === signalFilter);
-            }
-            
-            if (!filtered.length) {
-                container.innerHTML = `
-                    <div class="no-signals">
-                        <div class="no-signals-icon">📊</div>
-                        <div>No ${signalFilter === 'all' ? '' : signalFilter} signals detected yet</div>
-                        <div style="font-size: 12px; margin-top: 8px;">Start charts to detect SMC patterns</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = filtered.map(s => {
-                const timeAgo = getTimeAgo(s.timestamp);
-                
-                return `
-                    <div class="signal-card ${s.bias}">
-                        <div class="signal-header">
-                            <div>
-                                <div class="signal-name">${s.name}</div>
-                                <div class="signal-symbol">${s.symbol} • ${s.timeframe}</div>
-                            </div>
-                            <div class="signal-badge ${s.bias}">${s.bias.toUpperCase()}</div>
-                        </div>
-                        <div class="signal-info">
-                            <div class="signal-info-item">
-                                <div class="signal-info-label">Entry</div>
-                                <div class="signal-info-value">${s.entry}</div>
-                            </div>
-                            <div class="signal-info-item">
-                                <div class="signal-info-label">TP1</div>
-                                <div class="signal-info-value" style="color: #30D158">${s.tp1}</div>
-                            </div>
-                            <div class="signal-info-item">
-                                <div class="signal-info-label">TP2</div>
-                                <div class="signal-info-value" style="color: #30D158">${s.tp2}</div>
-                            </div>
-                            <div class="signal-info-item">
-                                <div class="signal-info-label">TP3</div>
-                                <div class="signal-info-value" style="color: #30D158">${s.tp3}</div>
-                            </div>
-                            <div class="signal-info-item">
-                                <div class="signal-info-label">Stop Loss</div>
-                                <div class="signal-info-value" style="color: #FF453A">${s.sl}</div>
-                            </div>
-                            <div class="signal-info-item">
-                                <div class="signal-info-label">R:R</div>
-                                <div class="signal-info-value">1:${s.rr}</div>
-                            </div>
-                        </div>
-                        <div class="signal-time">${timeAgo} • Confidence: ${s.confidence}%</div>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        function filterSignals(type) {
-            signalFilter = type;
-            
-            document.querySelectorAll('.signal-filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if ((type === 'all' && btn.textContent === 'All') ||
-                    (type === 'bullish' && btn.textContent === 'Bullish') ||
-                    (type === 'bearish' && btn.textContent === 'Bearish')) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            displaySignals();
-        }
-        
-        function clearAllSignals() {
-            if (!confirm('Clear all signals?')) return;
-            allSignals = [];
-            displaySignals();
-        }
-        
-        function getTimeAgo(timestamp) {
-            const seconds = Math.floor((Date.now() - timestamp) / 1000);
-            
-            if (seconds < 60) return 'Just now';
-            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-            return `${Math.floor(seconds / 86400)}d ago`;
-        }
-        
-        function toggleSetting(el, setting) {
-            el.classList.toggle('active');
-            
-            if (setting === 'smc') {
-                analysisEnabled = !analysisEnabled;
-                const btn = document.getElementById('analysisToggle');
-                btn.classList.toggle('active', analysisEnabled);
-            }
-        }
-        
-        function playSound() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                
-                osc.frequency.value = 880;
-                osc.type = 'sine';
-                
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-                
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + 0.3);
-            } catch (e) {
-                console.error('Audio error:', e);
-            }
-        }
-        
-        // ============ UI CONTROLS ============
-        
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const pageId = this.getAttribute('data-page');
-                document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active'));
-                document.getElementById(pageId).classList.add('active');
-                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-        
-        document.getElementById('numCharts').addEventListener('change', initializeCharts);
-        document.getElementById('startBtn').addEventListener('click', startAllCharts);
-        document.getElementById('stopBtn').addEventListener('click', stopAllCharts);
-        document.getElementById('refreshBtn').addEventListener('click', function() {
-            stopAllCharts();
-            setTimeout(initializeCharts, 500);
-        });
-        
-        document.getElementById('analysisToggle').addEventListener('click', function() {
-            analysisEnabled = !analysisEnabled;
-            this.classList.toggle('active');
-        });
-        
-        window.addEventListener('resize', () => {
-            Object.values(charts).forEach(chart => {
-                chart.resizeCanvas();
-                chart.draw();
-            });
-        });
-        
-        // Initialize on load
-        window.addEventListener('load', () => {
-            initializeCharts();
-        });
-    </script>
+    <script src="analysis.js"></script>
 </body>
 </html>
