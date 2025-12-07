@@ -19,141 +19,6 @@
             height: 100vh;
         }
         
-        /* Auth Pages */
-        .auth-page {
-            display: none;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #000 0%, #1a1a2e 100%);
-            padding: 20px;
-            overflow-y: auto;
-        }
-        .auth-page.active {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .auth-container {
-            width: 100%;
-            max-width: 400px;
-            background: rgba(28, 28, 30, 0.95);
-            border-radius: 20px;
-            padding: 40px 30px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-        }
-        .auth-logo {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .auth-logo-icon {
-            font-size: 60px;
-            margin-bottom: 10px;
-        }
-        .auth-logo-text {
-            font-size: 28px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .auth-subtitle {
-            text-align: center;
-            color: #8E8E93;
-            font-size: 14px;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-label {
-            display: block;
-            color: #8E8E93;
-            font-size: 13px;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-        .form-input {
-            width: 100%;
-            padding: 14px 16px;
-            background: #2C2C2E;
-            border: 1px solid transparent;
-            border-radius: 12px;
-            color: white;
-            font-size: 15px;
-            outline: none;
-            transition: all 0.3s;
-        }
-        .form-input:focus {
-            border-color: #007AFF;
-            background: #1C1C1E;
-        }
-        .form-input::placeholder {
-            color: #636366;
-        }
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        .auth-btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: transform 0.2s, opacity 0.2s;
-        }
-        .auth-btn:active {
-            transform: scale(0.98);
-        }
-        .auth-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .auth-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #8E8E93;
-        }
-        .auth-link a {
-            color: #007AFF;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .message {
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 13px;
-            margin-bottom: 20px;
-            display: none;
-        }
-        .error-message {
-            background: rgba(255, 69, 58, 0.1);
-            border: 1px solid rgba(255, 69, 58, 0.3);
-            color: #FF453A;
-        }
-        .success-message {
-            background: rgba(48, 209, 88, 0.1);
-            border: 1px solid rgba(48, 209, 88, 0.3);
-            color: #30D158;
-        }
-        
-        /* Main App */
-        .app-container {
-            display: none;
-        }
-        .app-container.active {
-            display: block;
-        }
-        
         /* MT5 Header */
         .mt5-header {
             background: #1C1C1E;
@@ -194,18 +59,19 @@
             align-items: center;
             gap: 12px;
         }
-        .logout-btn {
-            background: none;
-            border: none;
-            color: #FF453A;
-            font-size: 12px;
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: background 0.2s;
+        
+        .status-indicator {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            margin-right: 5px;
         }
-        .logout-btn:active {
-            background: rgba(255, 69, 58, 0.1);
+        .status-connected {
+            background: #30D158;
+        }
+        .status-disconnected {
+            background: #FF453A;
         }
         
         /* Bottom Navigation */
@@ -293,11 +159,30 @@
             position: relative;
             height: calc(100vh - 235px);
             background: #000;
+            display: grid;
+            gap: 1px;
         }
+        .chart-view.grid-1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+        .chart-view.grid-2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+        }
+        .chart-view.grid-3 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+        .chart-view.grid-4 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+        
         .single-chart {
             display: none;
-            height: 100%;
             flex-direction: column;
+            background: #000;
         }
         .single-chart.active {
             display: flex;
@@ -305,10 +190,10 @@
         
         .chart-info-bar {
             background: #1C1C1E;
-            padding: 6px 12px;
+            padding: 4px 8px;
             display: flex;
             justify-content: space-between;
-            font-size: 10px;
+            font-size: 9px;
             border-bottom: 1px solid #2C2C2E;
         }
         .info-item {
@@ -318,17 +203,34 @@
         }
         .info-label {
             color: #8E8E93;
-            font-size: 9px;
+            font-size: 8px;
         }
         .info-value {
             font-weight: 600;
-            font-size: 12px;
+            font-size: 10px;
         }
         .info-value.green {
             color: #30D158;
         }
         .info-value.red {
             color: #FF453A;
+        }
+        
+        .chart-controls {
+            background: #1C1C1E;
+            padding: 4px 8px;
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid #2C2C2E;
+        }
+        .chart-controls select {
+            background: #2C2C2E;
+            border: none;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            outline: none;
         }
         
         .chart-canvas-container {
@@ -346,49 +248,25 @@
         
         .zoom-controls {
             position: absolute;
-            right: 8px;
+            right: 4px;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
             z-index: 10;
         }
         .zoom-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 16px;
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
             border: none;
             background: rgba(28, 28, 30, 0.9);
             color: white;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             backdrop-filter: blur(10px);
-        }
-        
-        .chart-tabs {
-            background: #1C1C1E;
-            display: flex;
-            overflow-x: auto;
-            border-top: 1px solid #2C2C2E;
-            padding: 0 12px;
-        }
-        .chart-tabs::-webkit-scrollbar {
-            display: none;
-        }
-        .chart-tab {
-            padding: 10px 16px;
-            cursor: pointer;
-            color: #8E8E93;
-            border-bottom: 2px solid transparent;
-            white-space: nowrap;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        .chart-tab.active {
-            color: #007AFF;
-            border-bottom-color: #007AFF;
         }
         
         /* Signals Page */
@@ -545,150 +423,22 @@
         .toggle-switch.active .toggle-thumb {
             left: 21px;
         }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 3px;
-            margin-right: 5px;
-        }
-        .status-connected {
-            background: #30D158;
-        }
-        .status-disconnected {
-            background: #FF453A;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #8E8E93;
-        }
     </style>
 </head>
 <body>
-    <!-- Login Page -->
-    <div class="auth-page active" id="loginPage">
-        <div class="auth-container">
-            <div class="auth-logo">
-                <div class="auth-logo-icon">📈</div>
-                <div class="auth-logo-text">FOREX PRO</div>
-            </div>
-            <div class="auth-subtitle">Smart Market Concepts Trading</div>
-            <div class="message error-message" id="loginError"></div>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" placeholder="your@email.com" required id="loginEmail">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" placeholder="Enter your password" required id="loginPassword">
-                </div>
-                <button type="submit" class="auth-btn">Sign In</button>
-            </form>
-            <div class="auth-link">
-                <a href="#" id="forgotLink">Forgot Password?</a>
-            </div>
-            <div class="auth-link">
-                Don't have an account? <a href="#" id="signupLink">Sign Up</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Register Page -->
-    <div class="auth-page" id="registerPage">
-        <div class="auth-container">
-            <div class="auth-logo">
-                <div class="auth-logo-icon">📈</div>
-                <div class="auth-logo-text">FOREX PRO</div>
-            </div>
-            <div class="auth-subtitle">Create Your Trading Account</div>
-            <div class="message error-message" id="registerError"></div>
-            <div class="message success-message" id="registerSuccess"></div>
-            <form id="registerForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">First Name</label>
-                        <input type="text" class="form-input" placeholder="John" required id="regFirstName">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Last Name</label>
-                        <input type="text" class="form-input" placeholder="Doe" required id="regLastName">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" placeholder="your@email.com" required id="regEmail">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Phone Number</label>
-                    <input type="tel" class="form-input" placeholder="+1234567890" required id="regPhone">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" placeholder="Min 8 characters" required id="regPassword" minlength="8">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Confirm Password</label>
-                    <input type="password" class="form-input" placeholder="Re-enter password" required id="regConfirmPassword" minlength="8">
-                </div>
-                <button type="submit" class="auth-btn">Create Account</button>
-            </form>
-            <div class="auth-link">
-                Already have an account? <a href="#" id="loginLink">Sign In</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Forgot Password Page -->
-    <div class="auth-page" id="forgotPage">
-        <div class="auth-container">
-            <div class="auth-logo">
-                <div class="auth-logo-icon">🔐</div>
-                <div class="auth-logo-text">Reset Password</div>
-            </div>
-            <div class="auth-subtitle">Enter your email to reset your password</div>
-            <div class="message error-message" id="forgotError"></div>
-            <div class="message success-message" id="forgotSuccess"></div>
-            <form id="forgotForm">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" placeholder="your@email.com" required id="forgotEmail">
-                </div>
-                <div id="resetFields" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label">New Password</label>
-                        <input type="password" class="form-input" placeholder="Min 8 characters" id="forgotNewPassword" minlength="8">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-input" placeholder="Re-enter password" id="forgotConfirmPassword" minlength="8">
-                    </div>
-                </div>
-                <button type="submit" class="auth-btn" id="forgotBtn">Continue</button>
-            </form>
-            <div class="auth-link">
-                <a href="#" id="backToLoginLink">Back to Sign In</a>
-            </div>
-        </div>
-    </div>
-
     <!-- Main App Container -->
-    <div class="app-container" id="appContainer">
+    <div class="app-container">
         <!-- Header -->
         <div class="mt5-header">
             <div class="header-left">
                 <div class="mt5-logo">FOREX PRO</div>
                 <div class="account-info">
-                    <div class="account-number" id="userNameDisplay">User</div>
+                    <div class="account-number">Demo Account</div>
                     <div class="account-balance">$10,000.00</div>
                 </div>
             </div>
             <div class="header-right">
-                <span class="status-indicator status-disconnected" id="connectionStatus"></span>
-                <button class="logout-btn" id="logoutBtn">Logout</button>
+                <span class="status-indicator status-connected" id="connectionStatus"></span>
             </div>
         </div>
 
@@ -696,10 +446,10 @@
         <div class="page-container active" id="chartsPage">
             <div class="chart-toolbar">
                 <select class="toolbar-select" id="numCharts">
-                    <option value="1" selected>1 Chart</option>
+                    <option value="1">1 Chart</option>
                     <option value="2">2 Charts</option>
                     <option value="3">3 Charts</option>
-                    <option value="4">4 Charts</option>
+                    <option value="4" selected>4 Charts</option>
                 </select>
                 <button class="toolbar-btn" id="startBtn">▶</button>
                 <button class="toolbar-btn" id="stopBtn">⏸</button>
@@ -707,12 +457,13 @@
                 <button class="toolbar-btn active" id="analysisToggle">SMC</button>
             </div>
 
-            <div class="chart-view">
+            <div class="chart-view grid-4">
+                <!-- Chart 1 -->
                 <div class="single-chart active" id="chart1">
                     <div class="chart-info-bar">
                         <div class="info-item">
                             <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName1">US 100</div>
+                            <div class="info-value" id="symbolName1">GOLD</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Price</div>
@@ -722,19 +473,15 @@
                             <div class="info-label">Change</div>
                             <div class="info-value" id="change1">--</div>
                         </div>
-                        <div class="info-item">
-                            <div class="info-label">H/L</div>
-                            <div class="info-value" id="highlow1">--</div>
-                        </div>
                     </div>
-                    <div class="chart-toolbar">
-                        <select class="toolbar-select" id="symbol1">
-                            <option value="US100" selected>US 100</option>
-                            <option value="XAUUSD">GOLD</option>
+                    <div class="chart-controls">
+                        <select class="chart-symbol" id="symbol1">
+                            <option value="XAUUSD" selected>GOLD</option>
                             <option value="EURUSD">EUR/USD</option>
                             <option value="GBPUSD">GBP/USD</option>
+                            <option value="USDJPY">USD/JPY</option>
                         </select>
-                        <select class="toolbar-select" id="timeframe1">
+                        <select class="chart-timeframe" id="timeframe1">
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
@@ -749,10 +496,123 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="chart-tabs" id="chartTabs">
-                <div class="chart-tab active">Chart 1</div>
+                <!-- Chart 2 -->
+                <div class="single-chart active" id="chart2">
+                    <div class="chart-info-bar">
+                        <div class="info-item">
+                            <div class="info-label">Pair</div>
+                            <div class="info-value" id="symbolName2">EUR/USD</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Price</div>
+                            <div class="info-value" id="price2">--</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Change</div>
+                            <div class="info-value" id="change2">--</div>
+                        </div>
+                    </div>
+                    <div class="chart-controls">
+                        <select class="chart-symbol" id="symbol2">
+                            <option value="XAUUSD">GOLD</option>
+                            <option value="EURUSD" selected>EUR/USD</option>
+                            <option value="GBPUSD">GBP/USD</option>
+                            <option value="USDJPY">USD/JPY</option>
+                        </select>
+                        <select class="chart-timeframe" id="timeframe2">
+                            <option value="300" selected>5M</option>
+                            <option value="900">15M</option>
+                            <option value="1800">30M</option>
+                            <option value="3600">1H</option>
+                        </select>
+                    </div>
+                    <div class="chart-canvas-container">
+                        <canvas id="canvas2"></canvas>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="zoom(2, 'in')">+</button>
+                            <button class="zoom-btn" onclick="zoom(2, 'out')">−</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart 3 -->
+                <div class="single-chart active" id="chart3">
+                    <div class="chart-info-bar">
+                        <div class="info-item">
+                            <div class="info-label">Pair</div>
+                            <div class="info-value" id="symbolName3">GBP/USD</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Price</div>
+                            <div class="info-value" id="price3">--</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Change</div>
+                            <div class="info-value" id="change3">--</div>
+                        </div>
+                    </div>
+                    <div class="chart-controls">
+                        <select class="chart-symbol" id="symbol3">
+                            <option value="XAUUSD">GOLD</option>
+                            <option value="EURUSD">EUR/USD</option>
+                            <option value="GBPUSD" selected>GBP/USD</option>
+                            <option value="USDJPY">USD/JPY</option>
+                        </select>
+                        <select class="chart-timeframe" id="timeframe3">
+                            <option value="300" selected>5M</option>
+                            <option value="900">15M</option>
+                            <option value="1800">30M</option>
+                            <option value="3600">1H</option>
+                        </select>
+                    </div>
+                    <div class="chart-canvas-container">
+                        <canvas id="canvas3"></canvas>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="zoom(3, 'in')">+</button>
+                            <button class="zoom-btn" onclick="zoom(3, 'out')">−</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart 4 -->
+                <div class="single-chart active" id="chart4">
+                    <div class="chart-info-bar">
+                        <div class="info-item">
+                            <div class="info-label">Pair</div>
+                            <div class="info-value" id="symbolName4">USD/JPY</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Price</div>
+                            <div class="info-value" id="price4">--</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Change</div>
+                            <div class="info-value" id="change4">--</div>
+                        </div>
+                    </div>
+                    <div class="chart-controls">
+                        <select class="chart-symbol" id="symbol4">
+                            <option value="XAUUSD">GOLD</option>
+                            <option value="EURUSD">EUR/USD</option>
+                            <option value="GBPUSD">GBP/USD</option>
+                            <option value="USDJPY" selected>USD/JPY</option>
+                        </select>
+                        <select class="chart-timeframe" id="timeframe4">
+                            <option value="300" selected>5M</option>
+                            <option value="900">15M</option>
+                            <option value="1800">30M</option>
+                            <option value="3600">1H</option>
+                        </select>
+                    </div>
+                    <div class="chart-canvas-container">
+                        <canvas id="canvas4"></canvas>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="zoom(4, 'in')">+</button>
+                            <button class="zoom-btn" onclick="zoom(4, 'out')">−</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -806,7 +666,7 @@
             <div class="settings-section" style="margin-top: 20px;">
                 <div class="settings-item">
                     <div class="settings-label">Clear All Signals</div>
-                    <button class="auth-btn" onclick="clearAllSignals()" style="width: auto; padding: 8px 16px; margin: 0; font-size: 12px;">Clear</button>
+                    <button class="toolbar-btn" onclick="clearAllSignals()" style="padding: 8px 16px;">Clear</button>
                 </div>
             </div>
         </div>
@@ -829,272 +689,12 @@
     </div>
 
     <script>
-        // ============ FIREBASE CONFIGURATION ============
-        const FIREBASE_URL = 'https://mzanzifx-default-rtdb.firebaseio.com';
-        
-        // ============ AUTHENTICATION SYSTEM ============
-        let currentUser = null;
-        let forgotStep = 1;
-        
-        // Firebase User Management
-        async function saveUserToFirebase(email, userData) {
-            try {
-                const safeEmail = email.replace(/\./g, '_').replace(/[@#$\[\]]/g, '_');
-                const response = await fetch(`${FIREBASE_URL}/users/${safeEmail}.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
-                });
-                return response.ok;
-            } catch (e) {
-                console.error('Error saving user:', e);
-                return false;
-            }
-        }
-        
-        async function getUserFromFirebase(email) {
-            try {
-                const safeEmail = email.replace(/\./g, '_').replace(/[@#$\[\]]/g, '_');
-                const response = await fetch(`${FIREBASE_URL}/users/${safeEmail}.json`);
-                return await response.json();
-            } catch (e) {
-                console.error('Error getting user:', e);
-                return null;
-            }
-        }
-        
-        // UI Helper Functions
-        function showPage(pageId) {
-            document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            hideMessages();
-        }
-        
-        function showMessage(id, text) {
-            const el = document.getElementById(id);
-            el.textContent = text;
-            el.style.display = 'block';
-        }
-        
-        function hideMessages() {
-            document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
-        }
-        
-        // Registration Handler
-        document.getElementById('registerForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            hideMessages();
-            
-            const submitBtn = this.querySelector('.auth-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Creating Account...';
-            
-            const firstName = document.getElementById('regFirstName').value.trim();
-            const lastName = document.getElementById('regLastName').value.trim();
-            const email = document.getElementById('regEmail').value.trim().toLowerCase();
-            const phone = document.getElementById('regPhone').value.trim();
-            const password = document.getElementById('regPassword').value;
-            const confirmPassword = document.getElementById('regConfirmPassword').value;
-            
-            if (password !== confirmPassword) {
-                showMessage('registerError', 'Passwords do not match!');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Create Account';
-                return;
-            }
-            
-            if (password.length < 8) {
-                showMessage('registerError', 'Password must be at least 8 characters!');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Create Account';
-                return;
-            }
-            
-            const existingUser = await getUserFromFirebase(email);
-            if (existingUser) {
-                showMessage('registerError', 'Email already registered!');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Create Account';
-                return;
-            }
-            
-            const userData = {
-                firstName,
-                lastName,
-                email,
-                phone,
-                password,
-                createdAt: Date.now(),
-                balance: 10000
-            };
-            
-            const saved = await saveUserToFirebase(email, userData);
-            
-            if (saved) {
-                showMessage('registerSuccess', 'Account created successfully! Redirecting...');
-                setTimeout(() => {
-                    this.reset();
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Create Account';
-                    showPage('loginPage');
-                }, 2000);
-            } else {
-                showMessage('registerError', 'Error creating account. Please try again.');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Create Account';
-            }
-        });
-        
-        // Login Handler
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            hideMessages();
-            
-            const submitBtn = this.querySelector('.auth-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Signing In...';
-            
-            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-            const password = document.getElementById('loginPassword').value;
-            
-            const user = await getUserFromFirebase(email);
-            
-            if (!user) {
-                showMessage('loginError', 'Email not found!');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Sign In';
-                return;
-            }
-            
-            if (user.password !== password) {
-                showMessage('loginError', 'Incorrect password!');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Sign In';
-                return;
-            }
-            
-            currentUser = user;
-            document.getElementById('userNameDisplay').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
-            document.getElementById('appContainer').querySelector('.account-balance').textContent = 
-                `${currentUser.balance ? currentUser.balance.toLocaleString() : '10,000'}.00`;
-            
-            document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
-            document.getElementById('appContainer').classList.add('active');
-            
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Sign In';
-            
-            // Load user signals and initialize charts
-            setTimeout(() => {
-                initializeCharts();
-                loadSignalsFromFirebase();
-            }, 300);
-        });
-        
-        // Forgot Password Handler
-        document.getElementById('forgotForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            hideMessages();
-            
-            const submitBtn = document.getElementById('forgotBtn');
-            submitBtn.disabled = true;
-            
-            const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
-            
-            if (forgotStep === 1) {
-                submitBtn.textContent = 'Verifying...';
-                const user = await getUserFromFirebase(email);
-                
-                if (!user) {
-                    showMessage('forgotError', 'Email not found!');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Continue';
-                    return;
-                }
-                
-                document.getElementById('resetFields').style.display = 'block';
-                submitBtn.textContent = 'Reset Password';
-                showMessage('forgotSuccess', 'Email verified! Enter new password.');
-                forgotStep = 2;
-                submitBtn.disabled = false;
-            } else {
-                submitBtn.textContent = 'Resetting...';
-                const newPassword = document.getElementById('forgotNewPassword').value;
-                const confirmPassword = document.getElementById('forgotConfirmPassword').value;
-                
-                if (newPassword !== confirmPassword) {
-                    showMessage('forgotError', 'Passwords do not match!');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Reset Password';
-                    return;
-                }
-                
-                if (newPassword.length < 8) {
-                    showMessage('forgotError', 'Password must be at least 8 characters!');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Reset Password';
-                    return;
-                }
-                
-                const user = await getUserFromFirebase(email);
-                user.password = newPassword;
-                await saveUserToFirebase(email, user);
-                
-                showMessage('forgotSuccess', 'Password reset successfully! Redirecting...');
-                
-                setTimeout(() => {
-                    this.reset();
-                    document.getElementById('resetFields').style.display = 'none';
-                    submitBtn.textContent = 'Continue';
-                    forgotStep = 1;
-                    submitBtn.disabled = false;
-                    showPage('loginPage');
-                }, 2000);
-            }
-        });
-        
-        // Navigation Links
-        document.getElementById('signupLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            showPage('registerPage');
-        });
-        
-        document.getElementById('loginLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            showPage('loginPage');
-        });
-        
-        document.getElementById('forgotLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            showPage('forgotPage');
-        });
-        
-        document.getElementById('backToLoginLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            document.getElementById('forgotForm').reset();
-            document.getElementById('resetFields').style.display = 'none';
-            document.getElementById('forgotBtn').textContent = 'Continue';
-            forgotStep = 1;
-            showPage('loginPage');
-        });
-        
-        // Logout Handler
-        document.getElementById('logoutBtn').addEventListener('click', function() {
-            if (confirm('Are you sure you want to logout?')) {
-                stopAllCharts();
-                currentUser = null;
-                document.getElementById('appContainer').classList.remove('active');
-                showPage('loginPage');
-                document.getElementById('loginForm').reset();
-            }
-        });
-        
         // ============ CHART SYSTEM ============
         const SYMBOL_CONFIG = {
-            'US100': { name: 'US 100', base: 21500, apiSymbol: 'US100' },
-            'XAUUSD': { name: 'GOLD', base: 2650, apiSymbol: 'frxXAUUSD' },
-            'EURUSD': { name: 'EUR/USD', base: 1.0850, apiSymbol: 'frxEURUSD' },
-            'GBPUSD': { name: 'GBP/USD', base: 1.2650, apiSymbol: 'frxGBPUSD' }
+            'XAUUSD': { name: 'GOLD', base: 2650 },
+            'EURUSD': { name: 'EUR/USD', base: 1.0850 },
+            'GBPUSD': { name: 'GBP/USD', base: 1.2650 },
+            'USDJPY': { name: 'USD/JPY', base: 149.50 }
         };
         
         let charts = {};
@@ -1108,14 +708,29 @@
                 this.canvas = document.getElementById(`canvas${id}`);
                 this.ctx = this.canvas.getContext('2d');
                 this.data = [];
-                this.symbol = 'US100';
+                this.symbol = document.getElementById(`symbol${id}`).value;
                 this.timeframe = 300;
                 this.zoom = 80;
                 this.running = false;
                 this.lastSignalTime = 0;
                 
                 this.resizeCanvas();
+                this.setupEvents();
                 this.startSimulation();
+            }
+            
+            setupEvents() {
+                document.getElementById(`symbol${this.id}`).addEventListener('change', () => {
+                    this.symbol = document.getElementById(`symbol${this.id}`).value;
+                    this.data = [];
+                    this.startSimulation();
+                });
+                
+                document.getElementById(`timeframe${this.id}`).addEventListener('change', () => {
+                    this.timeframe = parseInt(document.getElementById(`timeframe${this.id}`).value);
+                    this.data = [];
+                    this.startSimulation();
+                });
             }
             
             resizeCanvas() {
@@ -1151,6 +766,8 @@
                 this.draw();
                 this.updateInfo();
                 
+                if (this.interval) clearInterval(this.interval);
+                
                 this.interval = setInterval(() => {
                     if (this.running) {
                         const last = this.data[this.data.length - 1];
@@ -1171,7 +788,6 @@
                             });
                             if (this.data.length > 200) this.data.shift();
                             
-                            // Generate SMC signal randomly
                             if (analysisEnabled && Math.random() > 0.95) {
                                 this.generateSignal();
                             }
@@ -1189,17 +805,13 @@
             
             generateSignal() {
                 const now = Date.now();
-                if (now - this.lastSignalTime < 300000) return; // 5 min cooldown
+                if (now - this.lastSignalTime < 300000) return;
                 
                 const patterns = [
-                    'Bullish Order Block',
-                    'Bearish Order Block',
-                    'Bullish FVG',
-                    'Bearish FVG',
-                    'Bullish BOS',
-                    'Bearish BOS',
-                    'Bullish CHoCH',
-                    'Bearish CHoCH'
+                    'Bullish Order Block', 'Bearish Order Block',
+                    'Bullish FVG', 'Bearish FVG',
+                    'Bullish BOS', 'Bearish BOS',
+                    'Bullish CHoCH', 'Bearish CHoCH'
                 ];
                 
                 const pattern = patterns[Math.floor(Math.random() * patterns.length)];
@@ -1231,15 +843,14 @@
                     bias: bias,
                     symbol: SYMBOL_CONFIG[this.symbol].name,
                     timeframe: this.getTimeframeLabel(),
-                    entry: entry.toFixed(2),
-                    tp1: tp1.toFixed(2),
-                    tp2: tp2.toFixed(2),
-                    tp3: tp3.toFixed(2),
-                    sl: sl.toFixed(2),
+                    entry: entry.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
+                    tp1: tp1.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
+                    tp2: tp2.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
+                    tp3: tp3.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
+                    sl: sl.toFixed(this.symbol === 'USDJPY' ? 2 : 4),
                     rr: rr.toFixed(2),
                     confidence: confidence,
-                    timestamp: Date.now(),
-                    userId: currentUser ? currentUser.email : 'guest'
+                    timestamp: Date.now()
                 };
                 
                 this.lastSignalTime = now;
@@ -1265,12 +876,7 @@
             }
             
             getTimeframeLabel() {
-                const labels = {
-                    300: '5M',
-                    900: '15M',
-                    1800: '30M',
-                    3600: '1H'
-                };
+                const labels = { 300: '5M', 900: '15M', 1800: '30M', 3600: '1H' };
                 return labels[this.timeframe] || '5M';
             }
             
@@ -1279,7 +885,7 @@
                 
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 
-                const padding = { top: 20, right: 60, bottom: 20, left: 10 };
+                const padding = { top: 10, right: 40, bottom: 10, left: 5 };
                 const chartW = this.canvas.width - padding.left - padding.right;
                 const chartH = this.canvas.height - padding.top - padding.bottom;
                 
@@ -1292,16 +898,16 @@
                 const range = maxP - minP;
                 const pad = range * 0.1;
                 
-                const candleW = Math.max(2, Math.min(12, chartW / visible.length - 2));
+                const candleW = Math.max(1, Math.min(8, chartW / visible.length - 1));
                 const spacing = chartW / visible.length;
                 
                 const priceToY = (price) => {
                     return padding.top + ((maxP + pad - price) / (range + pad * 2)) * chartH;
                 };
                 
-                // Draw grid
+                // Grid
                 this.ctx.strokeStyle = '#2C2C2E';
-                this.ctx.lineWidth = 1;
+                this.ctx.lineWidth = 0.5;
                 for (let i = 0; i <= 4; i++) {
                     const y = padding.top + (chartH / 4) * i;
                     this.ctx.beginPath();
@@ -1310,7 +916,7 @@
                     this.ctx.stroke();
                 }
                 
-                // Draw candles
+                // Candles
                 visible.forEach((c, i) => {
                     const x = padding.left + spacing * i + spacing / 2;
                     const yH = priceToY(c.h);
@@ -1322,7 +928,7 @@
                     const color = isUp ? '#30D158' : '#FF453A';
                     
                     this.ctx.strokeStyle = color;
-                    this.ctx.lineWidth = Math.max(1, candleW / 4);
+                    this.ctx.lineWidth = Math.max(0.5, candleW / 4);
                     this.ctx.beginPath();
                     this.ctx.moveTo(x, yH);
                     this.ctx.lineTo(x, yL);
@@ -1333,14 +939,15 @@
                     this.ctx.fillRect(x - candleW / 2, Math.min(yO, yC), candleW, bodyH);
                 });
                 
-                // Draw price scale
+                // Price scale
                 this.ctx.fillStyle = '#8E8E93';
-                this.ctx.font = '10px -apple-system';
+                this.ctx.font = '8px -apple-system';
                 this.ctx.textAlign = 'left';
                 for (let i = 0; i <= 4; i++) {
                     const price = maxP + pad - (range + pad * 2) * (i / 4);
                     const y = padding.top + (chartH / 4) * i;
-                    this.ctx.fillText(price.toFixed(2), this.canvas.width - padding.right + 5, y + 3);
+                    const decimals = this.symbol === 'USDJPY' ? 2 : 4;
+                    this.ctx.fillText(price.toFixed(decimals), this.canvas.width - padding.right + 2, y + 3);
                 }
             }
             
@@ -1352,18 +959,14 @@
                 const change = current.c - first.o;
                 const changePercent = (change / first.o) * 100;
                 
-                const prices = this.data.flatMap(c => [c.h, c.l]);
-                const high = Math.max(...prices);
-                const low = Math.min(...prices);
+                const decimals = this.symbol === 'USDJPY' ? 2 : 4;
                 
-                document.getElementById(`price${this.id}`).textContent = current.c.toFixed(2);
+                document.getElementById(`symbolName${this.id}`).textContent = SYMBOL_CONFIG[this.symbol].name;
+                document.getElementById(`price${this.id}`).textContent = current.c.toFixed(decimals);
                 
                 const changeEl = document.getElementById(`change${this.id}`);
                 changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
                 changeEl.className = `info-value ${changePercent >= 0 ? 'green' : 'red'}`;
-                
-                document.getElementById(`highlow${this.id}`).textContent = 
-                    `${high.toFixed(2)}/${low.toFixed(2)}`;
             }
             
             stop() {
@@ -1373,18 +976,37 @@
         }
         
         function initializeCharts() {
-            charts[1] = new ChartManager(1);
+            const numCharts = parseInt(document.getElementById('numCharts').value);
+            
+            // Stop and clear existing charts
+            Object.values(charts).forEach(chart => chart.stop());
+            charts = {};
+            
+            // Update grid layout
+            const chartView = document.querySelector('.chart-view');
+            chartView.className = 'chart-view grid-' + numCharts;
+            
+            // Show/hide charts
+            for (let i = 1; i <= 4; i++) {
+                const chartEl = document.getElementById(`chart${i}`);
+                if (i <= numCharts) {
+                    chartEl.classList.add('active');
+                    charts[i] = new ChartManager(i);
+                } else {
+                    chartEl.classList.remove('active');
+                }
+            }
+            
             document.getElementById('connectionStatus').className = 'status-indicator status-connected';
         }
         
         function startAllCharts() {
-            if (!charts[1]) initializeCharts();
-            charts[1].running = true;
+            Object.values(charts).forEach(chart => chart.running = true);
             document.getElementById('connectionStatus').className = 'status-indicator status-connected';
         }
         
         function stopAllCharts() {
-            if (charts[1]) charts[1].stop();
+            Object.values(charts).forEach(chart => chart.stop());
             document.getElementById('connectionStatus').className = 'status-indicator status-disconnected';
         }
         
@@ -1401,7 +1023,7 @@
         
         // ============ SIGNAL MANAGEMENT ============
         
-        async function addSignal(signal) {
+        function addSignal(signal) {
             const exists = allSignals.find(s => 
                 s.name === signal.name && 
                 s.bias === signal.bias &&
@@ -1413,44 +1035,10 @@
             allSignals.unshift(signal);
             allSignals = allSignals.slice(0, 50);
             
-            await saveSignalToFirebase(signal);
             displaySignals();
             
             if (signal.confidence >= 70) {
                 playSound();
-            }
-        }
-        
-        async function saveSignalToFirebase(signal) {
-            if (!currentUser) return;
-            
-            try {
-                await fetch(`${FIREBASE_URL}/signals/${signal.id}.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(signal)
-                });
-            } catch (e) {
-                console.error('Error saving signal:', e);
-            }
-        }
-        
-        async function loadSignalsFromFirebase() {
-            if (!currentUser) return;
-            
-            try {
-                const response = await fetch(`${FIREBASE_URL}/signals.json`);
-                const data = await response.json();
-                
-                if (data) {
-                    allSignals = Object.values(data)
-                        .filter(s => s.userId === currentUser.email)
-                        .sort((a, b) => b.timestamp - a.timestamp)
-                        .slice(0, 50);
-                    displaySignals();
-                }
-            } catch (e) {
-                console.error('Error loading signals:', e);
             }
         }
         
@@ -1532,23 +1120,10 @@
             displaySignals();
         }
         
-        async function clearAllSignals() {
-            if (!confirm('Clear all signals from database?')) return;
-            
-            try {
-                if (currentUser) {
-                    // Delete only user's signals
-                    for (const signal of allSignals) {
-                        await fetch(`${FIREBASE_URL}/signals/${signal.id}.json`, {
-                            method: 'DELETE'
-                        });
-                    }
-                }
-                allSignals = [];
-                displaySignals();
-            } catch (e) {
-                console.error('Error clearing signals:', e);
-            }
+        function clearAllSignals() {
+            if (!confirm('Clear all signals?')) return;
+            allSignals = [];
+            displaySignals();
         }
         
         function getTimeAgo(timestamp) {
@@ -1601,18 +1176,15 @@
                 document.getElementById(pageId).classList.add('active');
                 document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
                 this.classList.add('active');
-                
-                if (pageId === 'signalsPage') {
-                    loadSignalsFromFirebase();
-                }
             });
         });
         
+        document.getElementById('numCharts').addEventListener('change', initializeCharts);
         document.getElementById('startBtn').addEventListener('click', startAllCharts);
         document.getElementById('stopBtn').addEventListener('click', stopAllCharts);
         document.getElementById('refreshBtn').addEventListener('click', function() {
             stopAllCharts();
-            setTimeout(startAllCharts, 500);
+            setTimeout(initializeCharts, 500);
         });
         
         document.getElementById('analysisToggle').addEventListener('click', function() {
@@ -1621,10 +1193,15 @@
         });
         
         window.addEventListener('resize', () => {
-            if (charts[1]) {
-                charts[1].resizeCanvas();
-                charts[1].draw();
-            }
+            Object.values(charts).forEach(chart => {
+                chart.resizeCanvas();
+                chart.draw();
+            });
+        });
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initializeCharts();
         });
     </script>
 </body>
