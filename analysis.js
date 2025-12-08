@@ -10,12 +10,30 @@ let signalFilter = 'all';
 
 // Symbol configuration
 const SYMBOL_CONFIG = {
-    'US100': { name: 'US 100', base: 21500, apiSymbol: 'US100' },
     'XAUUSD': { name: 'GOLD', base: 2650, apiSymbol: 'frxXAUUSD' },
+    'XAGUSD': { name: 'SILVER', base: 30.50, apiSymbol: 'frxXAGUSD' },
     'EURUSD': { name: 'EUR/USD', base: 1.0850, apiSymbol: 'frxEURUSD' },
     'GBPUSD': { name: 'GBP/USD', base: 1.2650, apiSymbol: 'frxGBPUSD' },
+    'USDJPY': { name: 'USD/JPY', base: 149.50, apiSymbol: 'frxUSDJPY' },
     'AUDUSD': { name: 'AUD/USD', base: 0.6550, apiSymbol: 'frxAUDUSD' },
-    'AUDCAD': { name: 'AUD/CAD', base: 0.9150, apiSymbol: 'frxAUDCAD' }
+    'USDCAD': { name: 'USD/CAD', base: 1.3850, apiSymbol: 'frxUSDCAD' },
+    'USDCHF': { name: 'USD/CHF', base: 0.8850, apiSymbol: 'frxUSDCHF' },
+    'NZDUSD': { name: 'NZD/USD', base: 0.5850, apiSymbol: 'frxNZDUSD' },
+    'EURGBP': { name: 'EUR/GBP', base: 0.8550, apiSymbol: 'frxEURGBP' },
+    'EURJPY': { name: 'EUR/JPY', base: 162.00, apiSymbol: 'frxEURJPY' },
+    'GBPJPY': { name: 'GBP/JPY', base: 189.00, apiSymbol: 'frxGBPJPY' },
+    'AUDJPY': { name: 'AUD/JPY', base: 98.00, apiSymbol: 'frxAUDJPY' },
+    'EURAUD': { name: 'EUR/AUD', base: 1.6550, apiSymbol: 'frxEURAUD' },
+    'EURCHF': { name: 'EUR/CHF', base: 0.9350, apiSymbol: 'frxEURCHF' },
+    'GBPAUD': { name: 'GBP/AUD', base: 1.9350, apiSymbol: 'frxGBPAUD' },
+    'GBPCAD': { name: 'GBP/CAD', base: 1.7550, apiSymbol: 'frxGBPCAD' },
+    'GBPCHF': { name: 'GBP/CHF', base: 1.1150, apiSymbol: 'frxGBPCHF' },
+    'AUDCAD': { name: 'AUD/CAD', base: 0.9150, apiSymbol: 'frxAUDCAD' },
+    'AUDCHF': { name: 'AUD/CHF', base: 0.5750, apiSymbol: 'frxAUDCHF' },
+    'AUDNZD': { name: 'AUD/NZD', base: 1.1150, apiSymbol: 'frxAUDNZD' },
+    'CADJPY': { name: 'CAD/JPY', base: 108.00, apiSymbol: 'frxCADJPY' },
+    'CHFJPY': { name: 'CHF/JPY', base: 169.00, apiSymbol: 'frxCHFJPY' },
+    'NZDJPY': { name: 'NZD/JPY', base: 87.50, apiSymbol: 'frxNZDJPY' }
 };
 
 class ChartManager {
