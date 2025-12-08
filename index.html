@@ -162,18 +162,6 @@
             grid-template-columns: 1fr;
             grid-template-rows: 1fr;
         }
-        .chart-view.grid-2 {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr;
-        }
-        .chart-view.grid-3 {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-        }
-        .chart-view.grid-4 {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-        }
         
         .single-chart {
             display: none;
@@ -428,9 +416,9 @@
     <div class="app-container">
         <div class="mt5-header">
             <div class="header-left">
-                <div class="mt5-logo">FOREX PRO</div>
+                <div class="mt5-logo">Mzanzi_Fx</div>
                 <div class="account-info">
-                    <div class="account-number">MzanziFX</div>
+                    <div class="account-number"></div>
                     <div class="account-balance">KHAUTA SEABATA</div>
                 </div>
             </div>
@@ -441,16 +429,13 @@
 
         <div class="page-container active" id="chartsPage">
             <div class="chart-toolbar">
-                <select class="toolbar-select" id="numCharts" onchange="changeNumCharts()">
-                    <option value="1" selected>1 Chart</option>
-                </select>
                 <button class="toolbar-btn" id="startBtn" onclick="startAllCharts()">▶</button>
                 <button class="toolbar-btn" id="stopBtn" onclick="stopAllCharts()">⏸</button>
                 <button class="toolbar-btn" id="refreshBtn" onclick="refreshAllCharts()">🔄</button>
                 <button class="toolbar-btn active" id="analysisToggle" onclick="toggleAnalysis()">📊 SMC</button>
             </div>
 
-            <div class="chart-view grid-4" id="chartView">
+            <div class="chart-view grid-1" id="chartView">
                 <div class="single-chart active" id="chart1">
                     <div class="chart-info-bar">
                         <div class="info-item">
@@ -472,16 +457,39 @@
                     </div>
                     <div class="chart-controls">
                         <select id="symbol1" onchange="updateChart(1)">
-                            <option value="XAUUSD" selected>GOLD</option>
+                            <option value="XAUUSD" selected>GOLD (XAU/USD)</option>
                             <option value="EURUSD">EUR/USD</option>
                             <option value="GBPUSD">GBP/USD</option>
+                            <option value="USDJPY">USD/JPY</option>
                             <option value="AUDUSD">AUD/USD</option>
+                            <option value="USDCAD">USD/CAD</option>
+                            <option value="USDCHF">USD/CHF</option>
+                            <option value="NZDUSD">NZD/USD</option>
+                            <option value="EURGBP">EUR/GBP</option>
+                            <option value="EURJPY">EUR/JPY</option>
+                            <option value="GBPJPY">GBP/JPY</option>
+                            <option value="AUDJPY">AUD/JPY</option>
+                            <option value="EURAUD">EUR/AUD</option>
+                            <option value="EURCHF">EUR/CHF</option>
+                            <option value="GBPAUD">GBP/AUD</option>
+                            <option value="GBPCAD">GBP/CAD</option>
+                            <option value="GBPCHF">GBP/CHF</option>
+                            <option value="AUDCAD">AUD/CAD</option>
+                            <option value="AUDCHF">AUD/CHF</option>
+                            <option value="AUDNZD">AUD/NZD</option>
+                            <option value="CADJPY">CAD/JPY</option>
+                            <option value="CHFJPY">CHF/JPY</option>
+                            <option value="NZDJPY">NZD/JPY</option>
+                            <option value="XAGUSD">SILVER (XAG/USD)</option>
                         </select>
                         <select id="timeframe1" onchange="updateChart(1)">
+                            <option value="60">1M</option>
                             <option value="300" selected>5M</option>
                             <option value="900">15M</option>
                             <option value="1800">30M</option>
                             <option value="3600">1H</option>
+                            <option value="14400">4H</option>
+                            <option value="86400">1D</option>
                         </select>
                     </div>
                     <div class="chart-canvas-container">
@@ -489,132 +497,6 @@
                         <div class="zoom-controls">
                             <button class="zoom-btn" onclick="zoom(1, 'in')">+</button>
                             <button class="zoom-btn" onclick="zoom(1, 'out')">−</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="single-chart active" id="chart2">
-                    <div class="chart-info-bar">
-                        <div class="info-item">
-                            <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName2">EUR/USD</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Price</div>
-                            <div class="info-value" id="price2">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Change</div>
-                            <div class="info-value" id="change2">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">H/L</div>
-                            <div class="info-value" id="highlow2">--</div>
-                        </div>
-                    </div>
-                    <div class="chart-controls">
-                        <select id="symbol2" onchange="updateChart(2)">
-                            <option value="XAUUSD">GOLD</option>
-                            <option value="EURUSD" selected>EUR/USD</option>
-                            <option value="GBPUSD">GBP/USD</option>
-                            <option value="AUDUSD">AUD/USD</option>
-                        </select>
-                        <select id="timeframe2" onchange="updateChart(2)">
-                            <option value="300" selected>5M</option>
-                            <option value="900">15M</option>
-                            <option value="1800">30M</option>
-                            <option value="3600">1H</option>
-                        </select>
-                    </div>
-                    <div class="chart-canvas-container">
-                        <canvas id="canvas2"></canvas>
-                        <div class="zoom-controls">
-                            <button class="zoom-btn" onclick="zoom(2, 'in')">+</button>
-                            <button class="zoom-btn" onclick="zoom(2, 'out')">−</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="single-chart active" id="chart3">
-                    <div class="chart-info-bar">
-                        <div class="info-item">
-                            <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName3">GBP/USD</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Price</div>
-                            <div class="info-value" id="price3">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Change</div>
-                            <div class="info-value" id="change3">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">H/L</div>
-                            <div class="info-value" id="highlow3">--</div>
-                        </div>
-                    </div>
-                    <div class="chart-controls">
-                        <select id="symbol3" onchange="updateChart(3)">
-                            <option value="XAUUSD">GOLD</option>
-                            <option value="EURUSD">EUR/USD</option>
-                            <option value="GBPUSD" selected>GBP/USD</option>
-                            <option value="AUDUSD">AUD/USD</option>
-                        </select>
-                        <select id="timeframe3" onchange="updateChart(3)">
-                            <option value="300" selected>5M</option>
-                            <option value="900">15M</option>
-                            <option value="1800">30M</option>
-                            <option value="3600">1H</option>
-                        </select>
-                    </div>
-                    <div class="chart-canvas-container">
-                        <canvas id="canvas3"></canvas>
-                        <div class="zoom-controls">
-                            <button class="zoom-btn" onclick="zoom(3, 'in')">+</button>
-                            <button class="zoom-btn" onclick="zoom(3, 'out')">−</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="single-chart active" id="chart4">
-                    <div class="chart-info-bar">
-                        <div class="info-item">
-                            <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName4">AUD/USD</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Price</div>
-                            <div class="info-value" id="price4">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Change</div>
-                            <div class="info-value" id="change4">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">H/L</div>
-                            <div class="info-value" id="highlow4">--</div>
-                        </div>
-                    </div>
-                    <div class="chart-controls">
-                        <select id="symbol4" onchange="updateChart(4)">
-                            <option value="XAUUSD">GOLD</option>
-                            <option value="EURUSD">EUR/USD</option>
-                            <option value="GBPUSD">GBP/USD</option>
-                            <option value="AUDUSD" selected>AUD/USD</option>
-                        </select>
-                        <select id="timeframe4" onchange="updateChart(4)">
-                            <option value="300" selected>5M</option>
-                            <option value="900">15M</option>
-                            <option value="1800">30M</option>
-                            <option value="3600">1H</option>
-                        </select>
-                    </div>
-                    <div class="chart-canvas-container">
-                        <canvas id="canvas4"></canvas>
-                        <div class="zoom-controls">
-                            <button class="zoom-btn" onclick="zoom(4, 'in')">+</button>
-                            <button class="zoom-btn" onclick="zoom(4, 'out')">−</button>
                         </div>
                     </div>
                 </div>
