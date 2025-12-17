@@ -19,9 +19,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 40px 20px 120px 20px;
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         /* Animated Background */
@@ -122,9 +123,10 @@
             max-width: 450px;
             padding: 40px;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
             z-index: 1;
             border: 1px solid rgba(0, 255, 0, 0.2);
+            margin: 20px auto;
         }
 
         .container::before {
@@ -310,6 +312,7 @@
             align-items: center;
             gap: 20px;
             margin-top: 30px;
+            margin-bottom: 20px;
             padding-top: 20px;
             border-top: 1px solid #333;
         }
@@ -359,13 +362,14 @@
 
         /* Market Ticker */
         .market-ticker {
-            position: absolute;
-            bottom: 10px;
+            position: fixed;
+            bottom: 0;
             left: 0;
             width: 100%;
             overflow: hidden;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 8px 0;
+            z-index: 100;
         }
 
         .ticker-content {
