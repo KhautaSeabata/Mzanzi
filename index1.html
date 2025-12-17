@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .link-text {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .link-text a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .link-text a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            border-left: 4px solid #c33;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            border-left: 4px solid #3c3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .forgot-password-link {
+            text-align: right;
+            margin-top: 10px;
+        }
+
+        .forgot-password-link a {
+            color: #667eea;
+            font-size: 13px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .forgot-password-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form">
+            <h2>Welcome Back</h2>
+            <div class="form-group">
+                <label for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" required placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" required placeholder="Enter your password">
+            </div>
+            <div class="forgot-password-link">
+                <a id="showForgotPassword">Forgot Password?</a>
+            </div>
+            <button type="submit" class="btn">Login</button>
+            <div class="link-text">
+                Don't have an account? <a id="showSignup">Sign Up</a>
+            </div>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signupForm" class="auth-form hidden">
+            <h2>Create Account</h2>
+            <div class="form-group">
+                <label for="signupName">Full Name</label>
+                <input type="text" id="signupName" required placeholder="Enter your full name">
+            </div>
+            <div class="form-group">
+                <label for="signupEmail">Email</label>
+                <input type="email" id="signupEmail" required placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+                <label for="signupPhone">Phone Number</label>
+                <input type="tel" id="signupPhone" required placeholder="Enter your phone number">
+            </div>
+            <div class="form-group">
+                <label for="signupPassword">Password</label>
+                <input type="password" id="signupPassword" required placeholder="Create a password">
+            </div>
+            <div class="form-group">
+                <label for="signupConfirmPassword">Confirm Password</label>
+                <input type="password" id="signupConfirmPassword" required placeholder="Confirm your password">
+            </div>
+            <button type="submit" class="btn">Sign Up</button>
+            <div class="link-text">
+                Already have an account? <a id="showLogin">Login</a>
+            </div>
+        </form>
+
+        <!-- Forgot Password Form -->
+        <form id="forgotPasswordForm" class="auth-form hidden">
+            <h2>Reset Password</h2>
+            <p style="color: #666; margin-bottom: 20px; text-align: center; font-size: 14px;">
+                Enter your email address and we'll send you a link to reset your password.
+            </p>
+            <div class="form-group">
+                <label for="resetEmail">Email</label>
+                <input type="email" id="resetEmail" required placeholder="Enter your email">
+            </div>
+            <button type="submit" class="btn">Send Reset Link</button>
+            <div class="link-text">
+                Remember your password? <a id="backToLogin">Login</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword,
+            sendPasswordResetEmail,
+            updateProfile
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // TODO: Replace with your Firebase config
+        const firebaseConfig = {
+  apiKey: "AIzaSyC8Yh7DY90nujN6OiVD6kIHu3b-M0Kgero",
+  authDomain: "mzanzifx.firebaseapp.com",
+  databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com",
+  projectId: "mzanzifx",
+  storageBucket: "mzanzifx.firebasestorage.app",
+  messagingSenderId: "589859282488",
+  appId: "1:589859282488:web:14f12501983b021cc1d0cd"
+};
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // DOM Elements
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+
+        // Form Toggle Links
+        document.getElementById('showSignup').addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            forgotPasswordForm.classList.add('hidden');
+            clearMessages();
+        });
+
+        document.getElementById('showLogin').addEventListener('click', () => {
+            signupForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            forgotPasswordForm.classList.add('hidden');
+            clearMessages();
+        });
+
+        document.getElementById('showForgotPassword').addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            forgotPasswordForm.classList.remove('hidden');
+            signupForm.classList.add('hidden');
+            clearMessages();
+        });
+
+        document.getElementById('backToLogin').addEventListener('click', () => {
+            forgotPasswordForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            signupForm.classList.add('hidden');
+            clearMessages();
+        });
+
+        // Login
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                loginForm.classList.add('loading');
+                await signInWithEmailAndPassword(auth, email, password);
+                showSuccess('Login successful! Redirecting...');
+                setTimeout(() => {
+                    window.location.href = 'home.html';
+                }, 1500);
+            } catch (error) {
+                showError(getErrorMessage(error.code));
+                loginForm.classList.remove('loading');
+            }
+        });
+
+        // Signup
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const phone = document.getElementById('signupPhone').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+            // Validation
+            if (password !== confirmPassword) {
+                showError('Passwords do not match!');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters long!');
+                return;
+            }
+
+            try {
+                signupForm.classList.add('loading');
+                
+                // Create user
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Update profile with name
+                await updateProfile(user, {
+                    displayName: name
+                });
+
+                // Save additional user data to Firestore
+                await setDoc(doc(db, 'users', user.uid), {
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    createdAt: new Date().toISOString()
+                });
+
+                showSuccess('Account created successfully! Redirecting...');
+                setTimeout(() => {
+                    window.location.href = 'home.html';
+                }, 1500);
+            } catch (error) {
+                showError(getErrorMessage(error.code));
+                signupForm.classList.remove('loading');
+            }
+        });
+
+        // Forgot Password
+        forgotPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+
+            const email = document.getElementById('resetEmail').value;
+
+            try {
+                forgotPasswordForm.classList.add('loading');
+                await sendPasswordResetEmail(auth, email);
+                showSuccess('Password reset email sent! Check your inbox.');
+                forgotPasswordForm.classList.remove('loading');
+                document.getElementById('resetEmail').value = '';
+            } catch (error) {
+                showError(getErrorMessage(error.code));
+                forgotPasswordForm.classList.remove('loading');
+            }
+        });
+
+        // Helper Functions
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function clearMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        function getErrorMessage(errorCode) {
+            const errorMessages = {
+                'auth/email-already-in-use': 'This email is already registered!',
+                'auth/invalid-email': 'Invalid email address!',
+                'auth/user-not-found': 'No account found with this email!',
+                'auth/wrong-password': 'Incorrect password!',
+                'auth/weak-password': 'Password is too weak!',
+                'auth/too-many-requests': 'Too many attempts. Please try again later.',
+                'auth/network-request-failed': 'Network error. Check your connection.',
+                'auth/invalid-credential': 'Invalid email or password!'
+            };
+            return errorMessages[errorCode] || 'An error occurred. Please try again.';
+        }
+    </script>
+</body>
+</html>
