@@ -1,1277 +1,659 @@
-// SMC Forex Analyzer - Complete Analysis Engine with Real Market Data
-const FIREBASE_URL = 'https://alerts-83c9b-default-rtdb.firebaseio.com';
+// ============================================================================
+// GOLD TRADING CHART ENGINE - MT5 Style
+// ============================================================================
 
-let charts = {};
-let currentChartView = 1;
-let numActiveCharts = 1;
-let analysisEnabled = true;
-let allSignals = [];
-let signalFilter = 'all';
+let canvas, ctx;
+let chartData = [];
+let currentTimeframe = 300; // 5 minutes
+let ws = null;
+let isConnected = false;
 
-// Symbol configuration
-const SYMBOL_CONFIG = {
-    'XAUUSD': { name: 'GOLD', base: 2650, apiSymbol: 'frxXAUUSD' },
-    'XAGUSD': { name: 'SILVER', base: 30.50, apiSymbol: 'frxXAGUSD' },
-    'EURUSD': { name: 'EUR/USD', base: 1.0850, apiSymbol: 'frxEURUSD' },
-    'GBPUSD': { name: 'GBP/USD', base: 1.2650, apiSymbol: 'frxGBPUSD' },
-    'USDJPY': { name: 'USD/JPY', base: 149.50, apiSymbol: 'frxUSDJPY' },
-    'AUDUSD': { name: 'AUD/USD', base: 0.6550, apiSymbol: 'frxAUDUSD' },
-    'USDCAD': { name: 'USD/CAD', base: 1.3850, apiSymbol: 'frxUSDCAD' },
-    'USDCHF': { name: 'USD/CHF', base: 0.8850, apiSymbol: 'frxUSDCHF' },
-    'NZDUSD': { name: 'NZD/USD', base: 0.5850, apiSymbol: 'frxNZDUSD' },
-    'EURGBP': { name: 'EUR/GBP', base: 0.8550, apiSymbol: 'frxEURGBP' },
-    'EURJPY': { name: 'EUR/JPY', base: 162.00, apiSymbol: 'frxEURJPY' },
-    'GBPJPY': { name: 'GBP/JPY', base: 189.00, apiSymbol: 'frxGBPJPY' },
-    'AUDJPY': { name: 'AUD/JPY', base: 98.00, apiSymbol: 'frxAUDJPY' },
-    'EURAUD': { name: 'EUR/AUD', base: 1.6550, apiSymbol: 'frxEURAUD' },
-    'EURCHF': { name: 'EUR/CHF', base: 0.9350, apiSymbol: 'frxEURCHF' },
-    'GBPAUD': { name: 'GBP/AUD', base: 1.9350, apiSymbol: 'frxGBPAUD' },
-    'GBPCAD': { name: 'GBP/CAD', base: 1.7550, apiSymbol: 'frxGBPCAD' },
-    'GBPCHF': { name: 'GBP/CHF', base: 1.1150, apiSymbol: 'frxGBPCHF' },
-    'AUDCAD': { name: 'AUD/CAD', base: 0.9150, apiSymbol: 'frxAUDCAD' },
-    'AUDCHF': { name: 'AUD/CHF', base: 0.5750, apiSymbol: 'frxAUDCHF' },
-    'AUDNZD': { name: 'AUD/NZD', base: 1.1150, apiSymbol: 'frxAUDNZD' },
-    'CADJPY': { name: 'CAD/JPY', base: 108.00, apiSymbol: 'frxCADJPY' },
-    'CHFJPY': { name: 'CHF/JPY', base: 169.00, apiSymbol: 'frxCHFJPY' },
-    'NZDJPY': { name: 'NZD/JPY', base: 87.50, apiSymbol: 'frxNZDJPY' }
+// Chart State
+let zoom = 1.0;
+let scroll = 0;
+let crosshairEnabled = false;
+let crosshairX = 0;
+let crosshairY = 0;
+let isDragging = false;
+let lastTouchX = 0;
+
+// Indicators State
+let indicators = {
+    ma: false,
+    ema: false,
+    bb: false,
+    rsi: false,
+    macd: false
 };
 
-class ChartManager {
-    constructor(id) {
-        this.id = id;
-        this.canvas = document.getElementById(`canvas${id}`);
-        this.ctx = this.canvas.getContext('2d');
-        this.data = [];
-        this.ws = null;
-        this.symbol = document.getElementById(`symbol${id}`).value;
-        this.timeframe = parseInt(document.getElementById(`timeframe${id}`).value);
-        this.zoom = 80;
-        this.offset = 0;
-        this.dragging = false;
-        this.autoScroll = true;
-        this.lastSignalTime = 0;
-        
-        // SMC Data structures
-        this.smcData = {
-            orderBlocks: [],
-            fvgs: [],
-            liquidityZones: [],
-            bos: [],
-            choch: [],
-            swingPoints: [],
-            marketStructure: 'ranging'
-        };
-        
-        this.resizeCanvas();
-        this.setupDrag();
-    }
+// Chart Dimensions
+let chartPadding = {
+    top: 40,
+    right: 60,
+    bottom: 40,
+    left: 10
+};
 
-    resizeCanvas() {
-        const container = this.canvas.parentElement;
-        this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
-    }
-
-    setupDrag() {
-        let startX, startOffset;
-        this.canvas.addEventListener('touchstart', (e) => {
-            this.dragging = true;
-            startX = e.touches[0].clientX;
-            startOffset = this.offset;
-            this.autoScroll = false;
-        });
-        
-        this.canvas.addEventListener('touchmove', (e) => {
-            if (!this.dragging) return;
-            e.preventDefault();
-            const deltaX = e.touches[0].clientX - startX;
-            const candlesPerScreen = Math.floor(this.zoom);
-            const pixelsPerCandle = this.canvas.width / candlesPerScreen;
-            const candlesDelta = Math.round(deltaX / pixelsPerCandle);
-            this.offset = Math.max(0, Math.min(this.data.length - candlesPerScreen, startOffset - candlesDelta));
-            this.draw();
-        }, { passive: false });
-        
-        this.canvas.addEventListener('touchend', () => {
-            this.dragging = false;
-            if (this.offset >= this.data.length - this.zoom - 5) {
-                this.autoScroll = true;
-            }
-        });
-    }
-
-    connect() {
-        if (this.ws) this.ws.close();
-        
-        this.ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
-        
-        this.ws.onopen = () => {
-            updateConnectionStatus(true);
-            const apiSymbol = SYMBOL_CONFIG[this.symbol].apiSymbol;
-            
-            this.ws.send(JSON.stringify({ 
-                ticks: apiSymbol, 
-                subscribe: 1 
-            }));
-            
-            this.ws.send(JSON.stringify({
-                ticks_history: apiSymbol,
-                count: 1000,
-                end: 'latest',
-                style: 'candles',
-                granularity: this.timeframe
-            }));
-        };
-
-        this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            if (data.candles) {
-                this.data = data.candles.map(c => ({
-                    x: c.epoch * 1000,
-                    o: parseFloat(c.open),
-                    h: parseFloat(c.high),
-                    l: parseFloat(c.low),
-                    c: parseFloat(c.close)
-                }));
-                this.draw();
-                this.updateInfo();
-                if (analysisEnabled) this.analyzeSMC();
-            } else if (data.tick) {
-                this.updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
-            } else if (data.ohlc) {
-                const candle = data.ohlc;
-                this.updateCandle({
-                    x: candle.epoch * 1000,
-                    o: parseFloat(candle.open),
-                    h: parseFloat(candle.high),
-                    l: parseFloat(candle.low),
-                    c: parseFloat(candle.close)
-                });
-            }
-        };
-
-        this.ws.onerror = () => updateConnectionStatus(false);
-        this.ws.onclose = () => updateConnectionStatus(false);
-    }
-
-    updateTick(price, time) {
-        const candleStart = Math.floor(time / (this.timeframe * 1000)) * (this.timeframe * 1000);
-        
-        if (!this.data.length || candleStart > this.data[this.data.length - 1].x) {
-            this.data.push({ 
-                x: candleStart, 
-                o: price, 
-                h: price, 
-                l: price, 
-                c: price 
-            });
-            if (this.data.length > 1000) this.data.shift();
-            if (analysisEnabled) this.analyzeSMC();
-        } else {
-            const last = this.data[this.data.length - 1];
-            last.c = price;
-            last.h = Math.max(last.h, price);
-            last.l = Math.min(last.l, price);
-        }
-        
-        this.draw();
-        this.updateInfo();
-    }
-
-    updateCandle(candle) {
-        if (!this.data.length) return;
-        
-        const last = this.data[this.data.length - 1];
-        if (candle.x === last.x) {
-            this.data[this.data.length - 1] = candle;
-        } else {
-            this.data.push(candle);
-            if (this.data.length > 1000) this.data.shift();
-            if (analysisEnabled) this.analyzeSMC();
-        }
-        
-        this.draw();
-        this.updateInfo();
-    }
-
-    // ============ SMC ANALYSIS METHODS ============
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    canvas = document.getElementById('chartCanvas');
+    ctx = canvas.getContext('2d');
     
-    analyzeSMC() {
-        if (this.data.length < 50) return;
-        
-        const currentTime = this.data[this.data.length - 1].x;
-        const keepDuration = this.timeframe * 100 * 1000;
-        
-        this.smcData.orderBlocks = this.smcData.orderBlocks.filter(ob => 
-            currentTime - ob.time < keepDuration
-        );
-        this.smcData.fvgs = this.smcData.fvgs.filter(fvg => 
-            currentTime - fvg.time < keepDuration && !fvg.filled
-        );
-        
-        this.identifySwingPoints();
-        this.detectMarketStructure();
-        this.detectOrderBlocks();
-        this.detectFairValueGaps();
-        this.detectLiquidityZones();
-        this.detectBreakOfStructure();
-        this.detectChangeOfCharacter();
-        this.checkFVGFills();
-        
-        this.draw();
-    }
+    // Setup canvas
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Touch/Mouse events for dragging and crosshair
+    setupInteraction();
+    
+    // Connect to Deriv WebSocket
+    connectWebSocket();
+});
 
-    identifySwingPoints() {
-        const lookback = 5;
-        const recentSwings = [];
-        
-        for (let i = lookback; i < this.data.length - lookback; i++) {
-            let isSwingHigh = true;
-            for (let j = 1; j <= lookback; j++) {
-                if (this.data[i].h <= this.data[i - j].h || this.data[i].h <= this.data[i + j].h) {
-                    isSwingHigh = false;
-                    break;
-                }
-            }
-            
-            if (isSwingHigh) {
-                recentSwings.push({
-                    index: i,
-                    type: 'high',
-                    price: this.data[i].h,
-                    time: this.data[i].x
-                });
-            }
-            
-            let isSwingLow = true;
-            for (let j = 1; j <= lookback; j++) {
-                if (this.data[i].l >= this.data[i - j].l || this.data[i].l >= this.data[i + j].l) {
-                    isSwingLow = false;
-                    break;
-                }
-            }
-            
-            if (isSwingLow) {
-                recentSwings.push({
-                    index: i,
-                    type: 'low',
-                    price: this.data[i].l,
-                    time: this.data[i].x
-                });
-            }
-        }
-        
-        this.smcData.swingPoints = recentSwings.slice(-30);
-    }
+function resizeCanvas() {
+    const container = document.getElementById('chartContainer');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    if (chartData.length > 0) drawChart();
+}
 
-    detectMarketStructure() {
-        const swingHighs = this.smcData.swingPoints.filter(s => s.type === 'high').slice(-5);
-        const swingLows = this.smcData.swingPoints.filter(s => s.type === 'low').slice(-5);
+// ============================================================================
+// WEBSOCKET CONNECTION - REAL GOLD DATA
+// ============================================================================
+function connectWebSocket() {
+    if (ws) ws.close();
+    
+    ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+    
+    ws.onopen = () => {
+        console.log('Connected to Deriv WebSocket');
+        isConnected = true;
+        requestCandles();
+    };
+    
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
         
-        if (swingHighs.length < 2 || swingLows.length < 2) {
-            this.smcData.marketStructure = 'ranging';
+        if (data.error) {
+            console.error('API Error:', data.error);
+            hideLoading();
             return;
         }
         
-        const recentHighs = swingHighs.slice(-2);
-        const recentLows = swingLows.slice(-2);
-        
-        const higherHighs = recentHighs[1].price > recentHighs[0].price;
-        const higherLows = recentLows[1].price > recentLows[0].price;
-        
-        const lowerHighs = recentHighs[1].price < recentHighs[0].price;
-        const lowerLows = recentLows[1].price < recentLows[0].price;
-        
-        if (higherHighs && higherLows) {
-            this.smcData.marketStructure = 'uptrend';
-        } else if (lowerHighs && lowerLows) {
-            this.smcData.marketStructure = 'downtrend';
-        } else {
-            this.smcData.marketStructure = 'ranging';
-        }
-    }
-
-    detectOrderBlocks() {
-        for (let i = 3; i < this.data.length - 1; i++) {
-            const current = this.data[i];
-            const prev = this.data[i - 1];
+        if (data.candles) {
+            // Historical candles received
+            chartData = data.candles.map(c => ({
+                time: c.epoch * 1000,
+                o: parseFloat(c.open),
+                h: parseFloat(c.high),
+                l: parseFloat(c.low),
+                c: parseFloat(c.close)
+            }));
             
-            const isBearishCandle = prev.c < prev.o;
-            const strongBullishMove = current.c > current.o && 
-                                     (current.c - current.o) > (prev.o - prev.c) * 1.5;
+            hideLoading();
+            drawChart();
+            updatePriceTicker();
             
-            if (isBearishCandle && strongBullishMove) {
-                const exists = this.smcData.orderBlocks.some(ob => 
-                    ob.index === i - 1 && ob.type === 'bullish'
-                );
-                
-                if (!exists) {
-                    this.smcData.orderBlocks.push({
-                        type: 'bullish',
-                        index: i - 1,
-                        top: prev.o,
-                        bottom: prev.c,
-                        time: prev.x,
-                        strength: this.calculateOrderBlockStrength(i - 1),
-                        tested: false
-                    });
-                    
-                    if (i === this.data.length - 2 && current.l <= prev.o * 1.001) {
-                        this.generateSignal('Bullish Order Block', 'bullish', prev);
-                    }
-                }
-            }
-            
-            const isBullishCandle = prev.c > prev.o;
-            const strongBearishMove = current.c < current.o && 
-                                     (current.o - current.c) > (prev.c - prev.o) * 1.5;
-            
-            if (isBullishCandle && strongBearishMove) {
-                const exists = this.smcData.orderBlocks.some(ob => 
-                    ob.index === i - 1 && ob.type === 'bearish'
-                );
-                
-                if (!exists) {
-                    this.smcData.orderBlocks.push({
-                        type: 'bearish',
-                        index: i - 1,
-                        top: prev.c,
-                        bottom: prev.o,
-                        time: prev.x,
-                        strength: this.calculateOrderBlockStrength(i - 1),
-                        tested: false
-                    });
-                    
-                    if (i === this.data.length - 2 && current.h >= prev.o * 0.999) {
-                        this.generateSignal('Bearish Order Block', 'bearish', prev);
-                    }
-                }
-            }
-        }
-        
-        this.smcData.orderBlocks = this.smcData.orderBlocks.slice(-15);
-    }
-
-    detectFairValueGaps() {
-        for (let i = 2; i < this.data.length; i++) {
-            const current = this.data[i];
-            const prev = this.data[i - 1];
-            const prev2 = this.data[i - 2];
-            
-            if (current.l > prev2.h) {
-                const gapSize = current.l - prev2.h;
-                const avgCandle = (prev.h - prev.l);
-                
-                if (gapSize > avgCandle * 0.3 && prev.c > prev.o) {
-                    const exists = this.smcData.fvgs.some(fvg => 
-                        Math.abs(fvg.index - (i - 1)) < 2 && fvg.type === 'bullish'
-                    );
-                    
-                    if (!exists) {
-                        this.smcData.fvgs.push({
-                            type: 'bullish',
-                            index: i - 1,
-                            top: current.l,
-                            bottom: prev2.h,
-                            time: prev.x,
-                            filled: false
-                        });
-                        
-                        if (i === this.data.length - 1) {
-                            this.generateSignal('Bullish FVG', 'bullish', prev2);
-                        }
-                    }
-                }
-            }
-            
-            if (current.h < prev2.l) {
-                const gapSize = prev2.l - current.h;
-                const avgCandle = (prev.h - prev.l);
-                
-                if (gapSize > avgCandle * 0.3 && prev.c < prev.o) {
-                    const exists = this.smcData.fvgs.some(fvg => 
-                        Math.abs(fvg.index - (i - 1)) < 2 && fvg.type === 'bearish'
-                    );
-                    
-                    if (!exists) {
-                        this.smcData.fvgs.push({
-                            type: 'bearish',
-                            index: i - 1,
-                            top: prev2.l,
-                            bottom: current.h,
-                            time: prev.x,
-                            filled: false
-                        });
-                        
-                        if (i === this.data.length - 1) {
-                            this.generateSignal('Bearish FVG', 'bearish', prev2);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    checkFVGFills() {
-        const currentPrice = this.data[this.data.length - 1].c;
-        
-        this.smcData.fvgs.forEach(fvg => {
-            if (fvg.type === 'bullish' && currentPrice <= fvg.bottom) {
-                fvg.filled = true;
-            } else if (fvg.type === 'bearish' && currentPrice >= fvg.top) {
-                fvg.filled = true;
-            }
-        });
-    }
-
-    detectLiquidityZones() {
-        const swingHighs = this.smcData.swingPoints.filter(s => s.type === 'high').slice(-10);
-        const swingLows = this.smcData.swingPoints.filter(s => s.type === 'low').slice(-10);
-        
-        this.smcData.liquidityZones = [];
-        
-        for (let i = 0; i < swingHighs.length - 1; i++) {
-            for (let j = i + 1; j < swingHighs.length; j++) {
-                const priceDiff = Math.abs(swingHighs[i].price - swingHighs[j].price);
-                const avgPrice = (swingHighs[i].price + swingHighs[j].price) / 2;
-                
-                if (priceDiff / avgPrice < 0.003) {
-                    this.smcData.liquidityZones.push({
-                        type: 'equal_highs',
-                        price: avgPrice,
-                        indices: [swingHighs[i].index, swingHighs[j].index],
-                        bias: 'bearish'
-                    });
-                }
-            }
-        }
-        
-        for (let i = 0; i < swingLows.length - 1; i++) {
-            for (let j = i + 1; j < swingLows.length; j++) {
-                const priceDiff = Math.abs(swingLows[i].price - swingLows[j].price);
-                const avgPrice = (swingLows[i].price + swingLows[j].price) / 2;
-                
-                if (priceDiff / avgPrice < 0.003) {
-                    this.smcData.liquidityZones.push({
-                        type: 'equal_lows',
-                        price: avgPrice,
-                        indices: [swingLows[i].index, swingLows[j].index],
-                        bias: 'bullish'
-                    });
-                }
-            }
-        }
-        
-        const unique = [];
-        this.smcData.liquidityZones.forEach(lz => {
-            const exists = unique.some(u => 
-                u.type === lz.type && Math.abs(u.price - lz.price) / lz.price < 0.001
-            );
-            if (!exists) unique.push(lz);
-        });
-        
-        this.smcData.liquidityZones = unique.slice(-8);
-    }
-
-    detectBreakOfStructure() {
-        const swingHighs = this.smcData.swingPoints.filter(s => s.type === 'high').slice(-10);
-        const swingLows = this.smcData.swingPoints.filter(s => s.type === 'low').slice(-10);
-        
-        this.smcData.bos = [];
-        
-        for (let i = 1; i < swingHighs.length; i++) {
-            const current = swingHighs[i];
-            const prev = swingHighs[i - 1];
-            
-            if (current.price > prev.price * 1.001) {
-                this.smcData.bos.push({
-                    type: 'bullish',
-                    index: current.index,
-                    breakPrice: prev.price,
-                    newPrice: current.price,
-                    time: current.time
-                });
-                
-                if (current.index >= this.data.length - 10) {
-                    this.generateSignal('Bullish BOS', 'bullish', this.data[current.index]);
-                }
-            }
-        }
-        
-        for (let i = 1; i < swingLows.length; i++) {
-            const current = swingLows[i];
-            const prev = swingLows[i - 1];
-            
-            if (current.price < prev.price * 0.999) {
-                this.smcData.bos.push({
-                    type: 'bearish',
-                    index: current.index,
-                    breakPrice: prev.price,
-                    newPrice: current.price,
-                    time: current.time
-                });
-                
-                if (current.index >= this.data.length - 10) {
-                    this.generateSignal('Bearish BOS', 'bearish', this.data[current.index]);
-                }
-            }
-        }
-        
-        this.smcData.bos = this.smcData.bos.slice(-10);
-    }
-
-    detectChangeOfCharacter() {
-        const swingPoints = [...this.smcData.swingPoints].sort((a, b) => a.index - b.index).slice(-20);
-        
-        this.smcData.choch = [];
-        
-        for (let i = 2; i < swingPoints.length; i++) {
-            const current = swingPoints[i];
-            const prev = swingPoints[i - 1];
-            const prev2 = swingPoints[i - 2];
-            
-            if (prev2.type === 'high' && prev.type === 'low' && current.type === 'high') {
-                if (current.price > prev2.price && prev.price < prev2.price) {
-                    this.smcData.choch.push({
-                        type: 'bullish',
-                        index: current.index,
-                        reversal: prev.price,
-                        time: current.time
-                    });
-                    
-                    if (current.index >= this.data.length - 10) {
-                        this.generateSignal('Bullish CHoCH', 'bullish', this.data[current.index]);
-                    }
-                }
-            }
-            
-            if (prev2.type === 'low' && prev.type === 'high' && current.type === 'low') {
-                if (current.price < prev2.price && prev.price > prev2.price) {
-                    this.smcData.choch.push({
-                        type: 'bearish',
-                        index: current.index,
-                        reversal: prev.price,
-                        time: current.time
-                    });
-                    
-                    if (current.index >= this.data.length - 10) {
-                        this.generateSignal('Bearish CHoCH', 'bearish', this.data[current.index]);
-                    }
-                }
-            }
-        }
-        
-        this.smcData.choch = this.smcData.choch.slice(-8);
-    }
-
-    calculateOrderBlockStrength(index) {
-        const candle = this.data[index];
-        const range = candle.h - candle.l;
-        const body = Math.abs(candle.c - candle.o);
-        return Math.min(100, Math.round((body / range) * 100));
-    }
-
-    generateSignal(patternName, bias, referenceCandle) {
-        const now = Date.now();
-        if (now - this.lastSignalTime < 300000) return;
-        
-        const currentPrice = this.data[this.data.length - 1].c;
-        const symbolName = SYMBOL_CONFIG[this.symbol].name;
-        
-        const atr = this.calculateATR(14);
-        let entryPrice, tp1, tp2, tp3, sl;
-        
-        if (bias === 'bullish') {
-            entryPrice = currentPrice;
-            tp1 = entryPrice + (atr * 1.5);
-            tp2 = entryPrice + (atr * 2.5);
-            tp3 = entryPrice + (atr * 3.5);
-            sl = entryPrice - (atr * 1.0);
-        } else {
-            entryPrice = currentPrice;
-            tp1 = entryPrice - (atr * 1.5);
-            tp2 = entryPrice - (atr * 2.5);
-            tp3 = entryPrice - (atr * 3.5);
-            sl = entryPrice + (atr * 1.0);
-        }
-        
-        const riskReward = Math.abs((tp1 - entryPrice) / (entryPrice - sl));
-        
-        const signal = {
-            id: Date.now() + Math.random(),
-            chartId: this.id,
-            symbol: symbolName,
-            name: patternName,
-            bias: bias,
-            timeframe: this.getTimeframeLabel(),
-            entry: entryPrice.toFixed(this.getPrecision()),
-            tp1: tp1.toFixed(this.getPrecision()),
-            tp2: tp2.toFixed(this.getPrecision()),
-            tp3: tp3.toFixed(this.getPrecision()),
-            sl: sl.toFixed(this.getPrecision()),
-            rr: riskReward.toFixed(2),
-            confidence: this.calculateConfidence(bias),
-            marketStructure: this.smcData.marketStructure,
-            timestamp: Date.now()
-        };
-        
-        this.lastSignalTime = now;
-        addSignal(signal);
-    }
-
-    calculateATR(period) {
-        if (this.data.length < period + 1) return 0.01;
-        
-        let atrSum = 0;
-        for (let i = this.data.length - period; i < this.data.length; i++) {
-            const current = this.data[i];
-            const prev = this.data[i - 1];
-            const tr = Math.max(
-                current.h - current.l,
-                Math.abs(current.h - prev.c),
-                Math.abs(current.l - prev.c)
-            );
-            atrSum += tr;
-        }
-        
-        return atrSum / period;
-    }
-
-    calculateConfidence(bias) {
-        let confidence = 50;
-        
-        if ((bias === 'bullish' && this.smcData.marketStructure === 'uptrend') ||
-            (bias === 'bearish' && this.smcData.marketStructure === 'downtrend')) {
-            confidence += 20;
-        }
-        
-        if (this.smcData.orderBlocks.length > 0) confidence += 10;
-        if (this.smcData.fvgs.length > 0) confidence += 10;
-        if (this.smcData.bos.length > 0) confidence += 5;
-        if (this.smcData.choch.length > 0) confidence += 5;
-        
-        return Math.min(95, confidence);
-    }
-
-    getPrecision() {
-        if (this.symbol.includes('USD')) return 5;
-        if (this.symbol === 'XAUUSD') return 2;
-        return 2;
-    }
-
-    getTimeframeLabel() {
-        const labels = {
-            300: '5M',
-            900: '15M',
-            1800: '30M',
-            3600: '1H',
-            14400: '4H'
-        };
-        return labels[this.timeframe] || '5M';
-    }
-
-    // ============ DRAWING METHODS ============
-    
-    draw() {
-        if (!this.data.length) return;
-        
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        const padding = { top: 20, right: 60, bottom: 20, left: 10 };
-        const chartW = this.canvas.width - padding.left - padding.right;
-        const chartH = this.canvas.height - padding.top - padding.bottom;
-        
-        const candlesPerScreen = Math.floor(this.zoom);
-        if (this.autoScroll) {
-            this.offset = Math.max(0, this.data.length - candlesPerScreen);
-        }
-        
-        const visible = this.data.slice(this.offset, this.offset + candlesPerScreen);
-        if (!visible.length) return;
-        
-        const prices = visible.flatMap(c => [c.h, c.l]);
-        const maxP = Math.max(...prices);
-        const minP = Math.min(...prices);
-        const range = maxP - minP;
-        const pad = range * 0.1;
-        
-        const candleW = Math.max(2, Math.min(12, chartW / visible.length - 2));
-        const spacing = chartW / visible.length;
-        
-        const priceToY = (price) => {
-            return padding.top + ((maxP + pad - price) / (range + pad * 2)) * chartH;
-        };
-        
-        const indexToX = (idx) => {
-            const visibleIdx = idx - this.offset;
-            return padding.left + spacing * visibleIdx + spacing / 2;
-        };
-        
-        this.drawGrid(padding, chartW, chartH, maxP, minP, range, pad, priceToY);
-        
-        if (analysisEnabled) {
-            this.drawSMCElements(priceToY, indexToX, padding, chartW);
-        }
-        
-        this.drawCandles(visible, spacing, padding, priceToY, candleW);
-        this.drawPriceScale(padding, chartH, maxP, minP, range, pad);
-    }
-
-    drawGrid(padding, chartW, chartH, maxP, minP, range, pad, priceToY) {
-        this.ctx.strokeStyle = '#2C2C2E';
-        this.ctx.lineWidth = 1;
-        
-        for (let i = 0; i <= 4; i++) {
-            const y = padding.top + (chartH / 4) * i;
-            this.ctx.beginPath();
-            this.ctx.moveTo(padding.left, y);
-            this.ctx.lineTo(this.canvas.width - padding.right, y);
-            this.ctx.stroke();
-        }
-    }
-
-drawPriceScale(padding, chartH, maxP, minP, range, pad) {
-        this.ctx.fillStyle = '#8E8E93';
-        this.ctx.font = '10px -apple-system';
-        this.ctx.textAlign = 'left';
-        
-        for (let i = 0; i <= 4; i++) {
-            const price = maxP + pad - (range + pad * 2) * (i / 4);
-            const y = padding.top + (chartH / 4) * i;
-            this.ctx.fillText(price.toFixed(this.getPrecision()), this.canvas.width - padding.right + 5, y + 3);
-        }
-    }
-
-    drawSMCElements(priceToY, indexToX, padding, chartW) {
-        // Draw Order Blocks
-        this.smcData.orderBlocks.slice(-10).forEach(ob => {
-            if (ob.index >= this.offset && ob.index < this.offset + this.zoom) {
-                this.ctx.save();
-                this.ctx.fillStyle = ob.type === 'bullish' ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 69, 58, 0.15)';
-                this.ctx.strokeStyle = ob.type === 'bullish' ? '#30D158' : '#FF453A';
-                this.ctx.lineWidth = 2;
-                
-                const x = indexToX(ob.index);
-                const y1 = priceToY(ob.top);
-                const y2 = priceToY(ob.bottom);
-                const width = this.canvas.width - padding.right - x;
-                
-                this.ctx.fillRect(x, y1, width, y2 - y1);
-                this.ctx.strokeRect(x, y1, width, y2 - y1);
-                
-                // Label
-                this.ctx.fillStyle = ob.type === 'bullish' ? '#30D158' : '#FF453A';
-                this.ctx.font = 'bold 10px -apple-system';
-                this.ctx.textAlign = 'left';
-                this.ctx.fillText('OB', x + 5, y1 + 14);
-                this.ctx.restore();
-            }
-        });
-        
-        // Draw Fair Value Gaps
-        this.smcData.fvgs.forEach(fvg => {
-            if (!fvg.filled && fvg.index >= this.offset && fvg.index < this.offset + this.zoom) {
-                this.ctx.save();
-                this.ctx.fillStyle = fvg.type === 'bullish' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 159, 10, 0.2)';
-                this.ctx.strokeStyle = fvg.type === 'bullish' ? '#8B5CF6' : '#FF9F0A';
-                this.ctx.lineWidth = 1;
-                this.ctx.setLineDash([4, 4]);
-                
-                const x = indexToX(fvg.index);
-                const y1 = priceToY(fvg.top);
-                const y2 = priceToY(fvg.bottom);
-                const width = this.canvas.width - padding.right - x;
-                
-                this.ctx.fillRect(x, y1, width, y2 - y1);
-                this.ctx.strokeRect(x, y1, width, y2 - y1);
-                
-                this.ctx.setLineDash([]);
-                this.ctx.fillStyle = fvg.type === 'bullish' ? '#8B5CF6' : '#FF9F0A';
-                this.ctx.font = 'bold 10px -apple-system';
-                this.ctx.fillText('FVG', x + 5, y1 + 14);
-                this.ctx.restore();
-            }
-        });
-        
-        // Draw Liquidity Zones
-        this.smcData.liquidityZones.forEach(lz => {
-            this.ctx.save();
-            this.ctx.strokeStyle = lz.bias === 'bullish' ? 'rgba(48, 209, 88, 0.6)' : 'rgba(255, 69, 58, 0.6)';
-            this.ctx.lineWidth = 2;
-            this.ctx.setLineDash([8, 4]);
-            
-            const y = priceToY(lz.price);
-            this.ctx.beginPath();
-            this.ctx.moveTo(padding.left, y);
-            this.ctx.lineTo(this.canvas.width - padding.right, y);
-            this.ctx.stroke();
-            
-            this.ctx.setLineDash([]);
-            this.ctx.fillStyle = lz.bias === 'bullish' ? '#30D158' : '#FF453A';
-            this.ctx.font = 'bold 9px -apple-system';
-            this.ctx.textAlign = 'left';
-            this.ctx.fillText(lz.type === 'equal_highs' ? '💧EQH' : '💧EQL', padding.left + 5, y - 5);
-            this.ctx.restore();
-        });
-        
-        // Draw CHoCH markers
-        this.smcData.choch.forEach(ch => {
-            if (ch.index >= this.offset && ch.index < this.offset + this.zoom) {
-                this.ctx.save();
-                const x = indexToX(ch.index);
-                const y = priceToY(ch.reversal);
-                
-                this.ctx.fillStyle = ch.type === 'bullish' ? '#30D158' : '#FF453A';
-                this.ctx.font = 'bold 10px -apple-system';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('CHoCH', x, y - 8);
-                
-                // Arrow
-                this.ctx.beginPath();
-                if (ch.type === 'bullish') {
-                    this.ctx.moveTo(x, y - 2);
-                    this.ctx.lineTo(x - 4, y + 6);
-                    this.ctx.lineTo(x + 4, y + 6);
-                } else {
-                    this.ctx.moveTo(x, y + 2);
-                    this.ctx.lineTo(x - 4, y - 6);
-                    this.ctx.lineTo(x + 4, y - 6);
-                }
-                this.ctx.closePath();
-                this.ctx.fill();
-                this.ctx.restore();
-            }
-        });
-        
-        // Draw BOS markers
-        this.smcData.bos.forEach(bos => {
-            if (bos.index >= this.offset && bos.index < this.offset + this.zoom) {
-                this.ctx.save();
-                const x = indexToX(bos.index);
-                const y = priceToY(bos.type === 'bullish' ? bos.newPrice : bos.newPrice);
-                
-                this.ctx.fillStyle = bos.type === 'bullish' ? '#30D158' : '#FF453A';
-                this.ctx.font = 'bold 9px -apple-system';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('BOS', x, y + (bos.type === 'bullish' ? -5 : 15));
-                this.ctx.restore();
-            }
-        });
-        
-        // Draw Swing Points
-        this.smcData.swingPoints.forEach(sp => {
-            if (sp.index >= this.offset && sp.index < this.offset + this.zoom) {
-                this.ctx.save();
-                this.ctx.fillStyle = sp.type === 'high' ? '#FF453A' : '#30D158';
-                const x = indexToX(sp.index);
-                const y = priceToY(sp.price);
-                
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, 3, 0, Math.PI * 2);
-                this.ctx.fill();
-                this.ctx.restore();
-            }
-        });
-        
-        // Draw SMC Info Overlay
-        this.drawSMCInfo(padding);
-    }
-
-    drawSMCInfo(padding) {
-        this.ctx.save();
-        this.ctx.fillStyle = 'rgba(28, 28, 30, 0.85)';
-        this.ctx.fillRect(padding.left + 5, padding.top + 5, 140, 95);
-        
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 11px -apple-system';
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText('📊 SMC Analysis', padding.left + 10, padding.top + 20);
-        
-        this.ctx.font = '9px -apple-system';
-        this.ctx.fillStyle = '#8E8E93';
-        
-        const structureColor = this.smcData.marketStructure === 'uptrend' ? '#30D158' : 
-                               this.smcData.marketStructure === 'downtrend' ? '#FF453A' : '#FFD60A';
-        this.ctx.fillStyle = structureColor;
-        this.ctx.fillText(`Structure: ${this.smcData.marketStructure.toUpperCase()}`, padding.left + 10, padding.top + 35);
-        
-        this.ctx.fillStyle = '#8E8E93';
-        this.ctx.fillText(`Order Blocks: ${this.smcData.orderBlocks.length}`, padding.left + 10, padding.top + 48);
-        this.ctx.fillText(`FVGs: ${this.smcData.fvgs.filter(f => !f.filled).length}`, padding.left + 10, padding.top + 61);
-        this.ctx.fillText(`BOS: ${this.smcData.bos.length}`, padding.left + 10, padding.top + 74);
-        this.ctx.fillText(`CHoCH: ${this.smcData.choch.length}`, padding.left + 10, padding.top + 87);
-        
-        this.ctx.restore();
-    }
-
-    drawCandles(visible, spacing, padding, priceToY, candleW) {
-        visible.forEach((c, i) => {
-            const x = padding.left + spacing * i + spacing / 2;
-            const yH = priceToY(c.h);
-            const yL = priceToY(c.l);
-            const yO = priceToY(c.o);
-            const yC = priceToY(c.c);
-            
-            const isUp = c.c >= c.o;
-            const color = isUp ? '#30D158' : '#FF453A';
-            
-            // Wick
-            this.ctx.strokeStyle = color;
-            this.ctx.lineWidth = Math.max(1, candleW / 4);
-            this.ctx.beginPath();
-            this.ctx.moveTo(x, yH);
-            this.ctx.lineTo(x, yL);
-            this.ctx.stroke();
-            
-            // Body
-            this.ctx.fillStyle = color;
-            const bodyH = Math.max(Math.abs(yC - yO), 1);
-            this.ctx.fillRect(x - candleW / 2, Math.min(yO, yC), candleW, bodyH);
-        });
-    }
-
-    updateInfo() {
-        if (!this.data.length) return;
-        
-        const current = this.data[this.data.length - 1];
-        const first = this.data[0];
-        const change = current.c - first.o;
-        const changePercent = (change / first.o) * 100;
-        
-        const prices = this.data.flatMap(c => [c.h, c.l]);
-        const high = Math.max(...prices);
-        const low = Math.min(...prices);
-        
-        document.getElementById(`price${this.id}`).textContent = current.c.toFixed(this.getPrecision());
-        
-        const changeEl = document.getElementById(`change${this.id}`);
-        changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
-        changeEl.className = `info-value ${changePercent >= 0 ? 'green' : 'red'}`;
-        
-        document.getElementById(`highlow${this.id}`).textContent = 
-            `${high.toFixed(this.getPrecision())}/${low.toFixed(this.getPrecision())}`;
-    }
-
-    disconnect() {
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
-    }
-}
-
-// ============ INITIALIZATION ============
-
-for (let i = 1; i <= 4; i++) {
-    charts[i] = new ChartManager(i);
-}
-
-// ============ UI FUNCTIONS ============
-
-function switchPage(pageId) {
-    document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active'));
-    document.getElementById(pageId).classList.add('active');
-    
-    document.querySelectorAll('.nav-item').forEach((item, idx) => {
-        item.classList.remove('active');
-        if ((pageId === 'chartsPage' && idx === 0) ||
-            (pageId === 'signalsPage' && idx === 1) ||
-            (pageId === 'settingsPage' && idx === 2)) {
-            item.classList.add('active');
-        }
-    });
-    
-    if (pageId === 'signalsPage') {
-        displaySignals();
-    }
-}
-
-function changeNumCharts() {
-    numActiveCharts = parseInt(document.getElementById('numCharts').value);
-    
-    const chartView = document.querySelector('.chart-view');
-    chartView.className = 'chart-view grid-' + numActiveCharts;
-    
-    for (let i = 1; i <= 4; i++) {
-        const chartEl = document.getElementById(`chart${i}`);
-        if (i <= numActiveCharts) {
-            chartEl.classList.add('active');
-        } else {
-            chartEl.classList.remove('active');
-        }
-    }
-    
-    setTimeout(() => {
-        Object.values(charts).forEach(chart => {
-            chart.resizeCanvas();
-            chart.draw();
-        });
-    }, 100);
-}
-
-function updateChart(id) {
-    const chart = charts[id];
-    chart.symbol = document.getElementById(`symbol${id}`).value;
-    chart.timeframe = parseInt(document.getElementById(`timeframe${id}`).value);
-    
-    const symbolName = SYMBOL_CONFIG[chart.symbol].name;
-    document.getElementById(`symbolName${id}`).textContent = symbolName;
-    
-    if (chart.ws && chart.ws.readyState === WebSocket.OPEN) {
-        chart.disconnect();
-        setTimeout(() => chart.connect(), 300);
-    }
-}
-
-function zoom(id, dir) {
-    const chart = charts[id];
-    if (dir === 'in') {
-        chart.zoom = Math.max(20, chart.zoom - 10);
-    } else {
-        chart.zoom = Math.min(150, chart.zoom + 10);
-    }
-    chart.draw();
-}
-
-function startAllCharts() {
-    for (let i = 1; i <= numActiveCharts; i++) {
-        charts[i].connect();
-    }
-}
-
-function stopAllCharts() {
-    for (let i = 1; i <= numActiveCharts; i++) {
-        charts[i].disconnect();
-    }
-    updateConnectionStatus(false);
-}
-
-function refreshAllCharts() {
-    stopAllCharts();
-    setTimeout(() => startAllCharts(), 500);
-}
-
-function toggleAnalysis() {
-    analysisEnabled = !analysisEnabled;
-    const btn = document.getElementById('analysisToggle');
-    btn.textContent = analysisEnabled ? '📊 SMC ON' : '📊 SMC OFF';
-    btn.classList.toggle('active', analysisEnabled);
-    
-    Object.values(charts).forEach(chart => {
-        chart.draw();
-        if (analysisEnabled) chart.analyzeSMC();
-    });
-}
-
-function updateConnectionStatus(connected) {
-    const indicator = document.querySelector('.status-indicator');
-    if (indicator) {
-        indicator.className = `status-indicator ${connected ? 'status-connected' : 'status-disconnected'}`;
-    }
-}
-
-// ============ SIGNAL MANAGEMENT ============
-
-function addSignal(signal) {
-    const exists = allSignals.find(s => 
-        s.name === signal.name && 
-        s.chartId === signal.chartId && 
-        s.bias === signal.bias &&
-        Date.now() - s.timestamp < 300000
-    );
-    
-    if (exists) return;
-    
-    allSignals.unshift(signal);
-    allSignals = allSignals.slice(0, 50);
-    
-    saveSignalToFirebase(signal);
-    
-    if (signal.confidence >= 70) {
-        playSound();
-        
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('🎯 SMC Signal Detected!', {
-                body: `${signal.symbol} - ${signal.name}\n${signal.bias.toUpperCase()} • ${signal.confidence}% confidence`,
-                icon: '/icon.png'
+            // Subscribe to live ticks
+            subscribeTicks();
+        } else if (data.tick) {
+            // Live tick received
+            updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
+        } else if (data.ohlc) {
+            // Live candle update
+            const candle = data.ohlc;
+            updateCandle({
+                time: candle.epoch * 1000,
+                o: parseFloat(candle.open),
+                h: parseFloat(candle.high),
+                l: parseFloat(candle.low),
+                c: parseFloat(candle.close)
             });
         }
-    }
+    };
     
-    displaySignals();
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        isConnected = false;
+    };
+    
+    ws.onclose = () => {
+        console.log('WebSocket closed');
+        isConnected = false;
+        setTimeout(connectWebSocket, 5000);
+    };
 }
 
-async function saveSignalToFirebase(signal) {
-    try {
-        await fetch(`${FIREBASE_URL}/signals/${signal.id}.json`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(signal)
+function requestCandles() {
+    ws.send(JSON.stringify({
+        ticks_history: 'frxXAUUSD',
+        adjust_start_time: 1,
+        count: 300,
+        end: 'latest',
+        start: 1,
+        style: 'candles',
+        granularity: currentTimeframe
+    }));
+}
+
+function subscribeTicks() {
+    ws.send(JSON.stringify({
+        ticks: 'frxXAUUSD',
+        subscribe: 1
+    }));
+}
+
+function updateTick(price, time) {
+    const candleStart = Math.floor(time / (currentTimeframe * 1000)) * (currentTimeframe * 1000);
+    
+    if (!chartData.length || candleStart > chartData[chartData.length - 1].time) {
+        chartData.push({ 
+            time: candleStart, 
+            o: price, 
+            h: price, 
+            l: price, 
+            c: price 
         });
-    } catch (e) {
-        console.error('Firebase save error:', e);
+        if (chartData.length > 1000) chartData.shift();
+    } else {
+        const last = chartData[chartData.length - 1];
+        last.c = price;
+        last.h = Math.max(last.h, price);
+        last.l = Math.min(last.l, price);
     }
+    
+    drawChart();
+    updatePriceTicker();
 }
 
-async function loadSignalsFromFirebase() {
-    try {
-        const response = await fetch(`${FIREBASE_URL}/signals.json`);
-        const data = await response.json();
-        
-        if (data) {
-            allSignals = Object.values(data)
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 50);
-            displaySignals();
-        }
-    } catch (e) {
-        console.error('Firebase load error:', e);
+function updateCandle(candle) {
+    if (!chartData.length) return;
+    
+    const last = chartData[chartData.length - 1];
+    if (candle.time === last.time) {
+        chartData[chartData.length - 1] = candle;
+    } else {
+        chartData.push(candle);
+        if (chartData.length > 1000) chartData.shift();
     }
+    
+    drawChart();
+    updatePriceTicker();
 }
 
-function displaySignals() {
-    const container = document.getElementById('signalsList');
+// ============================================================================
+// CHART DRAWING
+// ============================================================================
+function drawChart() {
+    if (!chartData.length) return;
     
-    let filtered = allSignals;
-    if (signalFilter !== 'all') {
-        filtered = allSignals.filter(s => s.bias === signalFilter);
-    }
+    const width = canvas.width;
+    const height = canvas.height;
+    const chartWidth = width - chartPadding.left - chartPadding.right;
+    const chartHeight = height - chartPadding.top - chartPadding.bottom;
     
-    if (!filtered.length) {
-        container.innerHTML = `
-            <div class="no-signals">
-                <div class="no-signals-icon">📊</div>
-                <div>No ${signalFilter === 'all' ? '' : signalFilter} signals detected yet</div>
-                <div style="font-size: 12px; margin-top: 8px;">Start charts to detect SMC patterns</div>
-            </div>
-        `;
-        return;
-    }
+    // Clear canvas
+    ctx.fillStyle = '#1e1e1e';
+    ctx.fillRect(0, 0, width, height);
     
-    container.innerHTML = filtered.map(s => {
-        const timeAgo = getTimeAgo(s.timestamp);
-        
-        return `
-            <div class="signal-card ${s.bias}">
-                <div class="signal-header">
-                    <div>
-                        <div class="signal-name">${s.name}</div>
-                        <div class="signal-symbol">${s.symbol} • ${s.timeframe}</div>
-                    </div>
-                    <div class="signal-badge ${s.bias}">${s.bias.toUpperCase()}</div>
-                </div>
-                <div class="signal-details">
-                    <div class="signal-detail">
-                        <span class="detail-label">Entry</span>
-                        <span class="detail-value">${s.entry}</span>
-                    </div>
-                    <div class="signal-detail">
-                        <span class="detail-label">TP1</span>
-                        <span class="detail-value green">${s.tp1}</span>
-                    </div>
-                    <div class="signal-detail">
-                        <span class="detail-label">TP2</span>
-                        <span class="detail-value green">${s.tp2}</span>
-                    </div>
-                    <div class="signal-detail">
-                        <span class="detail-label">TP3</span>
-                        <span class="detail-value green">${s.tp3}</span>
-                    </div>
-                    <div class="signal-detail">
-                        <span class="detail-label">SL</span>
-                        <span class="detail-value red">${s.sl}</span>
-                    </div>
-                    <div class="signal-detail">
-                        <span class="detail-label">R:R</span>
-                        <span class="detail-value">1:${s.rr}</span>
-                    </div>
-                </div>
-                <div class="signal-time">${timeAgo} • Confidence: ${s.confidence}% • Structure: ${s.marketStructure.toUpperCase()}</div>
-            </div>
-        `;
-    }).join('');
-}
-
-function filterSignals(type) {
-    signalFilter = type;
+    // Calculate visible candles based on zoom
+    const visibleCandles = Math.floor(chartWidth / (4 * zoom + 2));
+    const startIdx = Math.max(0, chartData.length - visibleCandles - scroll);
+    const endIdx = Math.min(chartData.length, startIdx + visibleCandles);
+    const visibleData = chartData.slice(startIdx, endIdx);
     
-    document.querySelectorAll('.signal-filter-btn').forEach(btn => {
-        btn.classList.remove('active');
+    if (visibleData.length === 0) return;
+    
+    // Calculate price range
+    const prices = visibleData.flatMap(d => [d.h, d.l]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice;
+    const priceScale = chartHeight / priceRange;
+    
+    // Draw grid lines
+    drawGrid(minPrice, maxPrice, priceRange, chartWidth, chartHeight);
+    
+    // Draw candles
+    const candleWidth = Math.max(2, (chartWidth / visibleData.length) - 2);
+    
+    visibleData.forEach((candle, i) => {
+        const x = chartPadding.left + (i * (chartWidth / visibleData.length));
+        drawCandle(candle, x, candleWidth, minPrice, maxPrice, priceScale);
     });
+    
+    // Draw indicators
+    if (indicators.ma) drawMA(visibleData, chartWidth, chartHeight, minPrice, maxPrice, priceScale);
+    if (indicators.ema) drawEMA(visibleData, chartWidth, chartHeight, minPrice, maxPrice, priceScale);
+    if (indicators.bb) drawBollingerBands(visibleData, chartWidth, chartHeight, minPrice, maxPrice, priceScale);
+    
+    // Draw price scale
+    drawPriceScale(minPrice, maxPrice, priceRange, width, height);
+    
+    // Draw time scale
+    drawTimeScale(visibleData, chartWidth, height);
+    
+    // Draw crosshair
+    if (crosshairEnabled) {
+        drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth);
+    }
+}
+
+function drawCandle(candle, x, width, minPrice, maxPrice, priceScale) {
+    const yHigh = chartPadding.top + (maxPrice - candle.h) * priceScale;
+    const yLow = chartPadding.top + (maxPrice - candle.l) * priceScale;
+    const yOpen = chartPadding.top + (maxPrice - candle.o) * priceScale;
+    const yClose = chartPadding.top + (maxPrice - candle.c) * priceScale;
+    
+    const isBullish = candle.c >= candle.o;
+    const color = isBullish ? '#26a69a' : '#ef5350';
+    
+    // Draw wick
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + width / 2, yHigh);
+    ctx.lineTo(x + width / 2, yLow);
+    ctx.stroke();
+    
+    // Draw body
+    ctx.fillStyle = color;
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyHeight = Math.abs(yClose - yOpen) || 1;
+    ctx.fillRect(x, bodyTop, width, bodyHeight);
+}
+
+function drawGrid(minPrice, maxPrice, priceRange, chartWidth, chartHeight) {
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
+    
+    // Horizontal grid lines (price levels)
+    for (let i = 0; i <= 5; i++) {
+        const y = chartPadding.top + (chartHeight * i / 5);
+        ctx.beginPath();
+        ctx.moveTo(chartPadding.left, y);
+        ctx.lineTo(chartPadding.left + chartWidth, y);
+        ctx.stroke();
+    }
+}
+
+function drawPriceScale(minPrice, maxPrice, priceRange, width, height) {
+    ctx.fillStyle = '#999';
+    ctx.font = '11px Roboto';
+    ctx.textAlign = 'left';
+    
+    for (let i = 0; i <= 5; i++) {
+        const price = minPrice + (priceRange * i / 5);
+        const y = chartPadding.top + height - chartPadding.bottom - chartPadding.top - ((height - chartPadding.top - chartPadding.bottom) * i / 5);
+        
+        // Draw price label with background
+        const text = price.toFixed(2);
+        const textWidth = ctx.measureText(text).width;
+        
+        ctx.fillStyle = '#2c2c2c';
+        ctx.fillRect(width - chartPadding.right + 2, y - 8, textWidth + 8, 16);
+        
+        ctx.fillStyle = '#999';
+        ctx.fillText(text, width - chartPadding.right + 6, y + 4);
+    }
+}
+
+function drawTimeScale(visibleData, chartWidth, height) {
+    if (visibleData.length === 0) return;
+    
+    ctx.fillStyle = '#999';
+    ctx.font = '10px Roboto';
+    ctx.textAlign = 'center';
+    
+    const numLabels = 4;
+    const step = Math.floor(visibleData.length / numLabels);
+    
+    for (let i = 0; i < numLabels; i++) {
+        const idx = i * step;
+        if (idx >= visibleData.length) continue;
+        
+        const candle = visibleData[idx];
+        const x = chartPadding.left + (idx * (chartWidth / visibleData.length));
+        const time = new Date(candle.time);
+        const timeStr = formatTime(time);
+        
+        ctx.fillText(timeStr, x, height - 10);
+    }
+}
+
+function formatTime(date) {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
+// ============================================================================
+// INDICATORS
+// ============================================================================
+function drawMA(data, chartWidth, chartHeight, minPrice, maxPrice, priceScale) {
+    if (data.length < 20) return;
+    
+    const period = 20;
+    ctx.strokeStyle = '#2196f3';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    for (let i = period - 1; i < data.length; i++) {
+        const sum = data.slice(i - period + 1, i + 1).reduce((acc, d) => acc + d.c, 0);
+        const ma = sum / period;
+        const x = chartPadding.left + (i * (chartWidth / data.length));
+        const y = chartPadding.top + (maxPrice - ma) * priceScale;
+        
+        if (i === period - 1) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    
+    ctx.stroke();
+}
+
+function drawEMA(data, chartWidth, chartHeight, minPrice, maxPrice, priceScale) {
+    if (data.length < 2) return;
+    
+    const period = 12;
+    const multiplier = 2 / (period + 1);
+    let ema = data[0].c;
+    
+    ctx.strokeStyle = '#ff9800';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    data.forEach((candle, i) => {
+        ema = (candle.c - ema) * multiplier + ema;
+        const x = chartPadding.left + (i * (chartWidth / data.length));
+        const y = chartPadding.top + (maxPrice - ema) * priceScale;
+        
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+    
+    ctx.stroke();
+}
+
+function drawBollingerBands(data, chartWidth, chartHeight, minPrice, maxPrice, priceScale) {
+    if (data.length < 20) return;
+    
+    const period = 20;
+    const stdDev = 2;
+    
+    ctx.strokeStyle = 'rgba(156, 39, 176, 0.5)';
+    ctx.lineWidth = 1;
+    
+    for (let i = period - 1; i < data.length; i++) {
+        const slice = data.slice(i - period + 1, i + 1);
+        const sum = slice.reduce((acc, d) => acc + d.c, 0);
+        const ma = sum / period;
+        
+        const variance = slice.reduce((acc, d) => acc + Math.pow(d.c - ma, 2), 0) / period;
+        const sd = Math.sqrt(variance);
+        
+        const upper = ma + (sd * stdDev);
+        const lower = ma - (sd * stdDev);
+        
+        const x = chartPadding.left + (i * (chartWidth / data.length));
+        const yUpper = chartPadding.top + (maxPrice - upper) * priceScale;
+        const yLower = chartPadding.top + (maxPrice - lower) * priceScale;
+        
+        if (i === period - 1) {
+            ctx.beginPath();
+            ctx.moveTo(x, yUpper);
+        } else {
+            ctx.lineTo(x, yUpper);
+        }
+    }
+    ctx.stroke();
+    
+    ctx.beginPath();
+    for (let i = period - 1; i < data.length; i++) {
+        const slice = data.slice(i - period + 1, i + 1);
+        const sum = slice.reduce((acc, d) => acc + d.c, 0);
+        const ma = sum / period;
+        
+        const variance = slice.reduce((acc, d) => acc + Math.pow(d.c - ma, 2), 0) / period;
+        const sd = Math.sqrt(variance);
+        
+        const lower = ma - (sd * stdDev);
+        
+        const x = chartPadding.left + (i * (chartWidth / data.length));
+        const yLower = chartPadding.top + (maxPrice - lower) * priceScale;
+        
+        if (i === period - 1) {
+            ctx.moveTo(x, yLower);
+        } else {
+            ctx.lineTo(x, yLower);
+        }
+    }
+    ctx.stroke();
+}
+
+// ============================================================================
+// CROSSHAIR
+// ============================================================================
+function drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth) {
+    if (!crosshairX || !crosshairY) return;
+    
+    // Draw crosshair lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    
+    // Vertical line
+    ctx.beginPath();
+    ctx.moveTo(crosshairX, 0);
+    ctx.lineTo(crosshairX, canvas.height);
+    ctx.stroke();
+    
+    // Horizontal line
+    ctx.beginPath();
+    ctx.moveTo(0, crosshairY);
+    ctx.lineTo(canvas.width, crosshairY);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    
+    // Find nearest candle and update info box
+    const candleIndex = Math.floor((crosshairX - chartPadding.left) / (chartWidth / visibleData.length));
+    if (candleIndex >= 0 && candleIndex < visibleData.length) {
+        const candle = visibleData[candleIndex];
+        updateCrosshairInfo(candle);
+    }
+}
+
+function updateCrosshairInfo(candle) {
+    document.getElementById('crossO').textContent = candle.o.toFixed(2);
+    document.getElementById('crossH').textContent = candle.h.toFixed(2);
+    document.getElementById('crossL').textContent = candle.l.toFixed(2);
+    document.getElementById('crossC').textContent = candle.c.toFixed(2);
+}
+
+// ============================================================================
+// INTERACTION
+// ============================================================================
+function setupInteraction() {
+    // Mouse events
+    canvas.addEventListener('mousedown', handleTouchStart);
+    canvas.addEventListener('mousemove', handleTouchMove);
+    canvas.addEventListener('mouseup', handleTouchEnd);
+    canvas.addEventListener('mouseleave', handleTouchEnd);
+    
+    // Touch events
+    canvas.addEventListener('touchstart', handleTouchStart);
+    canvas.addEventListener('touchmove', handleTouchMove);
+    canvas.addEventListener('touchend', handleTouchEnd);
+    
+    // Prevent default touch behavior
+    canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+}
+
+function handleTouchStart(e) {
+    const touch = e.touches ? e.touches[0] : e;
+    lastTouchX = touch.clientX;
+    
+    if (crosshairEnabled) {
+        const rect = canvas.getBoundingClientRect();
+        crosshairX = touch.clientX - rect.left;
+        crosshairY = touch.clientY - rect.top;
+        drawChart();
+    } else {
+        isDragging = true;
+    }
+}
+
+function handleTouchMove(e) {
+    const touch = e.touches ? e.touches[0] : e;
+    const rect = canvas.getBoundingClientRect();
+    
+    if (crosshairEnabled) {
+        crosshairX = touch.clientX - rect.left;
+        crosshairY = touch.clientY - rect.top;
+        drawChart();
+    } else if (isDragging) {
+        const deltaX = touch.clientX - lastTouchX;
+        const sensitivity = 0.5;
+        scroll -= Math.round(deltaX * sensitivity);
+        scroll = Math.max(0, Math.min(scroll, chartData.length - 10));
+        lastTouchX = touch.clientX;
+        drawChart();
+    }
+}
+
+function handleTouchEnd(e) {
+    isDragging = false;
+}
+
+// ============================================================================
+// CONTROLS
+// ============================================================================
+window.changeTimeframe = function(tf) {
+    currentTimeframe = tf;
+    chartData = [];
+    scroll = 0;
+    
+    // Update active button
+    document.querySelectorAll('.tf-button').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
-    displaySignals();
-}
-
-async function clearAllSignals() {
-    if (confirm('Clear all signals from database?')) {
-        try {
-            await fetch(`${FIREBASE_URL}/signals.json`, { method: 'DELETE' });
-            allSignals = [];
-            displaySignals();
-        } catch (e) {
-            console.error('Firebase clear error:', e);
-        }
+    // Request new data
+    if (isConnected) {
+        showLoading();
+        requestCandles();
     }
-}
+};
 
-function getTimeAgo(timestamp) {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+window.zoomIn = function() {
+    zoom = Math.min(3.0, zoom + 0.2);
+    drawChart();
+};
+
+window.zoomOut = function() {
+    zoom = Math.max(0.5, zoom - 0.2);
+    drawChart();
+};
+
+window.toggleCrosshair = function() {
+    crosshairEnabled = !crosshairEnabled;
+    const info = document.getElementById('crosshairInfo');
     
-    if (seconds < 60) return 'Just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
-}
-
-function toggleSetting(el, setting) {
-    el.classList.toggle('active');
-    
-    if (setting === 'smc') {
-        toggleAnalysis();
-    }
-}
-
-function playSound() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        
-        osc.frequency.value = 880;
-        osc.type = 'sine';
-        
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.3);
-    } catch (e) {
-        console.error('Audio error:', e);
-    }
-}
-
-// ============ INITIALIZATION ============
-
-window.addEventListener('load', () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
+    if (crosshairEnabled) {
+        info.classList.add('active');
+    } else {
+        info.classList.remove('active');
     }
     
-    loadSignalsFromFirebase();
+    drawChart();
+};
+
+window.autoScale = function() {
+    zoom = 1.0;
+    scroll = 0;
+    drawChart();
+};
+
+window.showIndicators = function() {
+    document.getElementById('indicatorsPanel').classList.add('open');
+};
+
+window.closeIndicators = function() {
+    document.getElementById('indicatorsPanel').classList.remove('open');
+};
+
+window.toggleIndicator = function(indicator) {
+    indicators[indicator] = !indicators[indicator];
+    const toggle = document.getElementById(indicator + 'Toggle');
+    toggle.classList.toggle('active');
+    drawChart();
+};
+
+window.openTrade = function() {
+    window.location.href = 'gold-trade.html';
+};
+
+window.toggleTemplate = function() {
+    alert('Chart templates coming soon!');
+};
+
+window.showSettings = function() {
+    alert('Settings coming soon!');
+};
+
+// ============================================================================
+// PRICE TICKER
+// ============================================================================
+function updatePriceTicker() {
+    if (!chartData.length) return;
     
-    window.addEventListener('resize', () => {
-        Object.values(charts).forEach(c => {
-            c.resizeCanvas();
-            c.draw();
-        });
-    });
+    const current = chartData[chartData.length - 1];
+    const prev = chartData[0];
     
-    setTimeout(() => {
-        charts[1].connect();
-    }, 500);
-});
+    const bid = current.c;
+    const ask = bid + 0.05; // Typical gold spread
+    const change = bid - prev.o;
+    const changePercent = (change / prev.o) * 100;
+    
+    // Find high/low/open
+    const high = Math.max(...chartData.map(d => d.h));
+    const low = Math.min(...chartData.map(d => d.l));
+    const open = chartData[0].o;
+    
+    // Update UI
+    document.getElementById('bidPrice').textContent = bid.toFixed(2);
+    document.getElementById('askPrice').textContent = `Ask: ${ask.toFixed(2)}`;
+    
+    const changeEl = document.getElementById('changeValue');
+    const percentEl = document.getElementById('changePercent');
+    
+    changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2);
+    percentEl.textContent = (changePercent >= 0 ? '+' : '') + changePercent.toFixed(2) + '%';
+    
+    changeEl.className = 'change-value ' + (change >= 0 ? 'positive' : 'negative');
+    percentEl.className = 'change-percent ' + (change >= 0 ? 'positive' : 'negative');
+    
+    document.getElementById('highPrice').textContent = high.toFixed(2);
+    document.getElementById('lowPrice').textContent = low.toFixed(2);
+    document.getElementById('openPrice').textContent = open.toFixed(2);
+}
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+function showLoading() {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+console.log('Gold Chart Engine Loaded');
