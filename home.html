@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMC Forex Analyzer Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gold Trading - MT5 Style</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -11,567 +12,678 @@
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: white;
-            overflow-x: hidden;
+            font-family: 'Roboto', sans-serif;
+            background: #1e1e1e;
+            color: #ffffff;
+            overflow: hidden;
             height: 100vh;
+            position: fixed;
+            width: 100%;
         }
-        
+
+        /* MT5 Header */
         .mt5-header {
-            background: #1C1C1E;
-            padding: 10px 15px;
+            background: #2c2c2c;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #2C2C2E;
+            border-bottom: 1px solid #3a3a3a;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            height: 48px;
         }
+
         .header-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .mt5-logo {
-            font-size: 18px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .account-info {
-            display: flex;
-            flex-direction: column;
-        }
-        .account-number {
-            font-size: 10px;
-            color: #8E8E93;
-        }
-        .account-balance {
-            font-size: 13px;
-            color: #30D158;
-            font-weight: 600;
-        }
-        .header-right {
             display: flex;
             align-items: center;
             gap: 12px;
         }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 3px;
-            margin-right: 5px;
+
+        .symbol-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.5px;
         }
-        .status-connected {
-            background: #30D158;
+
+        .symbol-description {
+            font-size: 11px;
+            color: #999;
+            margin-top: -2px;
         }
-        .status-disconnected {
-            background: #FF453A;
-        }
-        
-        .mt5-bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #1C1C1E;
+
+        .header-right {
             display: flex;
-            justify-content: space-around;
-            padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
-            border-top: 1px solid #2C2C2E;
-            z-index: 1000;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 3px;
+            gap: 15px;
+        }
+
+        .header-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
             cursor: pointer;
-            flex: 1;
-            padding: 4px;
-            color: #8E8E93;
+            font-size: 18px;
             transition: color 0.2s;
         }
-        .nav-item.active {
-            color: #007AFF;
+
+        .header-icon:active {
+            color: #4a90e2;
         }
-        .nav-icon {
-            font-size: 20px;
-        }
-        .nav-label {
-            font-size: 9px;
-            font-weight: 500;
-        }
-        
-        .page-container {
-            display: none;
-            height: calc(100vh - 115px);
-            overflow-y: auto;
-        }
-        .page-container.active {
-            display: block;
-        }
-        
-        .chart-toolbar {
-            background: #1C1C1E;
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            overflow-x: auto;
-            border-bottom: 1px solid #2C2C2E;
-        }
-        .chart-toolbar::-webkit-scrollbar {
-            display: none;
-        }
-        .toolbar-select {
-            background: #2C2C2E;
-            border: none;
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            outline: none;
-        }
-        .toolbar-btn {
-            background: #2C2C2E;
-            border: none;
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-        .toolbar-btn.active {
-            background: #007AFF;
-        }
-        
-        .chart-view {
-            position: relative;
-            height: calc(100vh - 235px);
-            background: #000;
-            display: grid;
-            gap: 1px;
-        }
-        .chart-view.grid-1 {
-            grid-template-columns: 1fr;
-            grid-template-rows: 1fr;
-        }
-        
-        .single-chart {
-            display: none;
-            flex-direction: column;
-            background: #000;
-        }
-        .single-chart.active {
-            display: flex;
-        }
-        
-        .chart-info-bar {
-            background: #1C1C1E;
-            padding: 4px 8px;
+
+        /* Price Ticker */
+        .price-ticker {
+            background: #252525;
+            padding: 10px 12px;
             display: flex;
             justify-content: space-between;
-            font-size: 9px;
-            border-bottom: 1px solid #2C2C2E;
+            align-items: center;
+            border-bottom: 1px solid #3a3a3a;
         }
-        .info-item {
+
+        .current-price {
             display: flex;
             flex-direction: column;
             gap: 2px;
         }
-        .info-label {
-            color: #8E8E93;
-            font-size: 8px;
+
+        .bid-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ff5252;
+            font-family: 'Roboto', monospace;
         }
-        .info-value {
-            font-weight: 600;
-            font-size: 10px;
+
+        .ask-price {
+            font-size: 13px;
+            color: #999;
+            font-family: 'Roboto', monospace;
         }
-        .info-value.green {
-            color: #30D158;
-        }
-        .info-value.red {
-            color: #FF453A;
-        }
-        
-        .chart-controls {
-            background: #1C1C1E;
-            padding: 4px 8px;
+
+        .price-change {
             display: flex;
-            gap: 4px;
-            border-bottom: 1px solid #2C2C2E;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
         }
-        .chart-controls select {
-            background: #2C2C2E;
+
+        .change-value {
+            font-size: 16px;
+            font-weight: 500;
+            font-family: 'Roboto', monospace;
+        }
+
+        .change-value.positive {
+            color: #4caf50;
+        }
+
+        .change-value.negative {
+            color: #ff5252;
+        }
+
+        .change-percent {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .change-percent.positive {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .change-percent.negative {
+            background: rgba(255, 82, 82, 0.2);
+            color: #ff5252;
+        }
+
+        /* Timeframe Bar */
+        .timeframe-bar {
+            background: #2c2c2c;
+            padding: 8px 0;
+            display: flex;
+            gap: 2px;
+            overflow-x: auto;
+            border-bottom: 1px solid #3a3a3a;
+            scrollbar-width: none;
+        }
+
+        .timeframe-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tf-button {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            background: transparent;
             border: none;
-            color: white;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            outline: none;
+            color: #999;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
         }
-        
-        .chart-canvas-container {
+
+        .tf-button.active {
+            color: #4a90e2;
+        }
+
+        .tf-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #4a90e2;
+        }
+
+        /* Chart Container */
+        .chart-container {
             flex: 1;
             position: relative;
-            background: #000;
+            background: #1e1e1e;
             overflow: hidden;
-            touch-action: pan-x pan-y;
         }
+
         canvas {
             width: 100%;
             height: 100%;
             display: block;
         }
-        
-        .zoom-controls {
+
+        /* Chart Controls Overlay */
+        .chart-controls {
             position: absolute;
-            right: 4px;
-            top: 50%;
-            transform: translateY(-50%);
+            top: 10px;
+            right: 10px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 8px;
             z-index: 10;
         }
-        .zoom-btn {
-            width: 24px;
-            height: 24px;
-            border-radius: 12px;
-            border: none;
-            background: rgba(28, 28, 30, 0.9);
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
+
+        .control-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(44, 44, 44, 0.9);
+            border: 1px solid #3a3a3a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 16px;
             cursor: pointer;
+            transition: all 0.2s;
             backdrop-filter: blur(10px);
         }
-        
-        .signals-header {
-            background: #1C1C1E;
-            padding: 12px 15px;
-            border-bottom: 1px solid #2C2C2E;
+
+        .control-btn:active {
+            background: rgba(74, 144, 226, 0.3);
+            color: #4a90e2;
+            border-color: #4a90e2;
         }
-        .signals-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .signals-controls {
-            display: flex;
-            gap: 8px;
-        }
-        .signal-filter-btn {
-            padding: 5px 10px;
-            background: #2C2C2E;
-            border: none;
-            color: white;
+
+        /* Crosshair Info */
+        .crosshair-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(44, 44, 44, 0.95);
+            padding: 8px 12px;
             border-radius: 6px;
             font-size: 11px;
-            cursor: pointer;
+            color: #999;
+            display: none;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            border: 1px solid #3a3a3a;
         }
-        .signal-filter-btn.active {
-            background: #007AFF;
+
+        .crosshair-info.active {
+            display: block;
         }
-        
-        .signals-list {
-            padding: 12px;
-        }
-        .no-signals {
-            text-align: center;
-            padding: 60px 20px;
-            color: #8E8E93;
-        }
-        .no-signals-icon {
-            font-size: 50px;
-            margin-bottom: 12px;
-        }
-        
-        .signal-card {
-            background: #1C1C1E;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-left: 4px solid #007AFF;
-        }
-        .signal-card.bullish {
-            border-left-color: #30D158;
-        }
-        .signal-card.bearish {
-            border-left-color: #FF453A;
-        }
-        .signal-header {
+
+        .crosshair-row {
             display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 12px;
-        }
-        .signal-name {
-            font-size: 16px;
-            font-weight: 600;
+            gap: 12px;
             margin-bottom: 4px;
         }
-        .signal-symbol {
-            font-size: 12px;
-            color: #8E8E93;
+
+        .crosshair-row:last-child {
+            margin-bottom: 0;
         }
-        .signal-badge {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 700;
+
+        .crosshair-label {
+            color: #666;
+            min-width: 30px;
         }
-        .signal-badge.bullish {
-            background: rgba(48, 209, 88, 0.2);
-            color: #30D158;
+
+        .crosshair-value {
+            color: #fff;
+            font-weight: 500;
         }
-        .signal-badge.bearish {
-            background: rgba(255, 69, 58, 0.2);
-            color: #FF453A;
+
+        /* Bottom Toolbar */
+        .bottom-toolbar {
+            background: #2c2c2c;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid #3a3a3a;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
         }
-        .signal-details {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-        .signal-detail {
+
+        .toolbar-btn {
             display: flex;
             flex-direction: column;
+            align-items: center;
             gap: 4px;
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 12px;
+            transition: color 0.2s;
+            min-width: 60px;
         }
-        .detail-label {
+
+        .toolbar-btn.active {
+            color: #4a90e2;
+        }
+
+        .toolbar-btn:active {
+            color: #4a90e2;
+        }
+
+        .toolbar-icon {
+            font-size: 22px;
+        }
+
+        .toolbar-label {
             font-size: 10px;
-            color: #8E8E93;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .detail-value {
-            font-size: 12px;
-            font-weight: 600;
+
+        /* Trade Button */
+        .trade-button {
+            position: fixed;
+            bottom: 80px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: all 0.3s;
         }
-        .detail-value.green {
-            color: #30D158;
+
+        .trade-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(74, 144, 226, 0.6);
         }
-        .detail-value.red {
-            color: #FF453A;
+
+        /* Indicators Panel */
+        .indicators-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2c2c2c;
+            transform: translateY(100%);
+            transition: transform 0.3s;
+            z-index: 200;
+            max-height: 70vh;
+            overflow-y: auto;
+            border-top: 1px solid #3a3a3a;
         }
-        .signal-time {
-            font-size: 11px;
-            color: #636366;
-            margin-top: 8px;
+
+        .indicators-panel.open {
+            transform: translateY(0);
         }
-        
-        .settings-section {
-            background: #1C1C1E;
-            margin: 12px;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        .settings-item {
-            padding: 12px 15px;
+
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid #3a3a3a;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #2C2C2E;
+            position: sticky;
+            top: 0;
+            background: #2c2c2c;
+            z-index: 1;
         }
-        .settings-item:last-child {
-            border-bottom: none;
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 700;
         }
-        .settings-label {
-            font-size: 14px;
-        }
-        .toggle-switch {
-            width: 45px;
-            height: 26px;
-            background: #2C2C2E;
-            border-radius: 13px;
-            position: relative;
+
+        .panel-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+            color: #999;
+            font-size: 20px;
             cursor: pointer;
-            transition: background 0.3s;
         }
-        .toggle-switch.active {
-            background: #30D158;
+
+        .indicator-item {
+            padding: 14px 16px;
+            border-bottom: 1px solid #3a3a3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
         }
-        .toggle-thumb {
-            width: 22px;
-            height: 22px;
-            background: white;
-            border-radius: 11px;
+
+        .indicator-item:active {
+            background: rgba(74, 144, 226, 0.1);
+        }
+
+        .indicator-name {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .indicator-toggle {
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            background: #3a3a3a;
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .indicator-toggle.active {
+            background: #4a90e2;
+        }
+
+        .indicator-toggle::after {
+            content: '';
             position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
             top: 2px;
             left: 2px;
-            transition: left 0.3s;
+            transition: left 0.2s;
         }
-        .toggle-switch.active .toggle-thumb {
-            left: 21px;
+
+        .indicator-toggle.active::after {
+            left: 22px;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(30, 30, 30, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #3a3a3a;
+            border-top-color: #4a90e2;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 16px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* Main Container */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Volume Bar */
+        .volume-bar {
+            background: #252525;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #999;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .volume-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .volume-label {
+            color: #666;
+        }
+
+        .volume-value {
+            color: #fff;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading XAUUSD...</div>
+    </div>
+
     <div class="app-container">
+        <!-- MT5 Header -->
         <div class="mt5-header">
             <div class="header-left">
-                <div class="mt5-logo">Khauta Seabata</div>
-                <div class="account-info">
-                    <div class="account-number"></div>
-                    <div class="account-balance">Forex Signals</div>
+                <div>
+                    <div class="symbol-name">XAUUSD</div>
+                    <div class="symbol-description">Gold vs US Dollar</div>
                 </div>
             </div>
             <div class="header-right">
-                <span class="status-indicator status-connected" id="connectionStatus"></span>
+                <div class="header-icon" onclick="toggleTemplate()">📊</div>
+                <div class="header-icon" onclick="showSettings()">⚙️</div>
+                <div class="header-icon" onclick="logout()">🚪</div>
             </div>
         </div>
 
-        <div class="page-container active" id="chartsPage">
-            <div class="chart-toolbar">
-                <button class="toolbar-btn" id="startBtn" onclick="startAllCharts()">▶</button>
-                <button class="toolbar-btn" id="stopBtn" onclick="stopAllCharts()">⏸</button>
-                <button class="toolbar-btn" id="refreshBtn" onclick="refreshAllCharts()">🔄</button>
-                <button class="toolbar-btn active" id="analysisToggle" onclick="toggleAnalysis()">📊 SMC</button>
+        <!-- Price Ticker -->
+        <div class="price-ticker">
+            <div class="current-price">
+                <div class="bid-price" id="bidPrice">2650.45</div>
+                <div class="ask-price" id="askPrice">Ask: 2650.50</div>
+            </div>
+            <div class="price-change">
+                <div class="change-value positive" id="changeValue">+12.35</div>
+                <div class="change-percent positive" id="changePercent">+0.47%</div>
+            </div>
+        </div>
+
+        <!-- Volume Info -->
+        <div class="volume-bar">
+            <div class="volume-item">
+                <div class="volume-label">High</div>
+                <div class="volume-value" id="highPrice">2654.20</div>
+            </div>
+            <div class="volume-item">
+                <div class="volume-label">Low</div>
+                <div class="volume-value" id="lowPrice">2645.80</div>
+            </div>
+            <div class="volume-item">
+                <div class="volume-label">Open</div>
+                <div class="volume-value" id="openPrice">2638.10</div>
+            </div>
+        </div>
+
+        <!-- Timeframe Bar -->
+        <div class="timeframe-bar">
+            <button class="tf-button" onclick="changeTimeframe(60)">M1</button>
+            <button class="tf-button active" onclick="changeTimeframe(300)">M5</button>
+            <button class="tf-button" onclick="changeTimeframe(900)">M15</button>
+            <button class="tf-button" onclick="changeTimeframe(1800)">M30</button>
+            <button class="tf-button" onclick="changeTimeframe(3600)">H1</button>
+            <button class="tf-button" onclick="changeTimeframe(14400)">H4</button>
+            <button class="tf-button" onclick="changeTimeframe(86400)">D1</button>
+            <button class="tf-button" onclick="changeTimeframe(604800)">W1</button>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="chart-container" id="chartContainer">
+            <canvas id="chartCanvas"></canvas>
+            
+            <!-- Chart Controls -->
+            <div class="chart-controls">
+                <div class="control-btn" onclick="zoomIn()" title="Zoom In">+</div>
+                <div class="control-btn" onclick="zoomOut()" title="Zoom Out">−</div>
+                <div class="control-btn" onclick="toggleCrosshair()" title="Crosshair">✛</div>
+                <div class="control-btn" onclick="autoScale()" title="Auto Scale">⊡</div>
             </div>
 
-            <div class="chart-view grid-1" id="chartView">
-                <div class="single-chart active" id="chart1">
-                    <div class="chart-info-bar">
-                        <div class="info-item">
-                            <div class="info-label">Pair</div>
-                            <div class="info-value" id="symbolName1">GOLD</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Price</div>
-                            <div class="info-value" id="price1">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Change</div>
-                            <div class="info-value" id="change1">--</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">H/L</div>
-                            <div class="info-value" id="highlow1">--</div>
-                        </div>
-                    </div>
-                    <div class="chart-controls">
-                        <select id="symbol1" onchange="updateChart(1)">
-                            <option value="XAUUSD" selected>GOLD (XAU/USD)</option>
-                            <option value="EURUSD">EUR/USD</option>
-                            <option value="GBPUSD">GBP/USD</option>
-                            <option value="USDJPY">USD/JPY</option>
-                            <option value="AUDUSD">AUD/USD</option>
-                            <option value="USDCAD">USD/CAD</option>
-                            <option value="USDCHF">USD/CHF</option>
-                            <option value="NZDUSD">NZD/USD</option>
-                            <option value="EURGBP">EUR/GBP</option>
-                            <option value="EURJPY">EUR/JPY</option>
-                            <option value="GBPJPY">GBP/JPY</option>
-                            <option value="AUDJPY">AUD/JPY</option>
-                            <option value="EURAUD">EUR/AUD</option>
-                            <option value="EURCHF">EUR/CHF</option>
-                            <option value="GBPAUD">GBP/AUD</option>
-                            <option value="GBPCAD">GBP/CAD</option>
-                            <option value="GBPCHF">GBP/CHF</option>
-                            <option value="AUDCAD">AUD/CAD</option>
-                            <option value="AUDCHF">AUD/CHF</option>
-                            <option value="AUDNZD">AUD/NZD</option>
-                            <option value="CADJPY">CAD/JPY</option>
-                            <option value="CHFJPY">CHF/JPY</option>
-                            <option value="NZDJPY">NZD/JPY</option>
-                            <option value="XAGUSD">SILVER (XAG/USD)</option>
-                        </select>
-                        <select id="timeframe1" onchange="updateChart(1)">
-                            <option value="60">1M</option>
-                            <option value="300" selected>5M</option>
-                            <option value="900">15M</option>
-                            <option value="1800">30M</option>
-                            <option value="3600">1H</option>
-                            <option value="14400">4H</option>
-                            <option value="86400">1D</option>
-                        </select>
-                    </div>
-                    <div class="chart-canvas-container">
-                        <canvas id="canvas1"></canvas>
-                        <div class="zoom-controls">
-                            <button class="zoom-btn" onclick="zoom(1, 'in')">+</button>
-                            <button class="zoom-btn" onclick="zoom(1, 'out')">−</button>
-                        </div>
-                    </div>
+            <!-- Crosshair Info -->
+            <div class="crosshair-info" id="crosshairInfo">
+                <div class="crosshair-row">
+                    <span class="crosshair-label">O:</span>
+                    <span class="crosshair-value" id="crossO">2650.00</span>
+                    <span class="crosshair-label">H:</span>
+                    <span class="crosshair-value" id="crossH">2651.00</span>
+                </div>
+                <div class="crosshair-row">
+                    <span class="crosshair-label">L:</span>
+                    <span class="crosshair-value" id="crossL">2649.00</span>
+                    <span class="crosshair-label">C:</span>
+                    <span class="crosshair-value" id="crossC">2650.50</span>
                 </div>
             </div>
         </div>
 
-        <div class="page-container" id="signalsPage">
-            <div class="signals-header">
-                <div class="signals-title">SMC Signals</div>
-                <div class="signals-controls">
-                    <button class="signal-filter-btn active" onclick="filterSignals('all')">All</button>
-                    <button class="signal-filter-btn" onclick="filterSignals('bullish')">Bullish</button>
-                    <button class="signal-filter-btn" onclick="filterSignals('bearish')">Bearish</button>
-                </div>
-            </div>
-            <div class="signals-list" id="signalsList">
-                <div class="no-signals">
-                    <div class="no-signals-icon">📊</div>
-                    <div>No signals detected yet</div>
-                    <div style="font-size: 12px; margin-top: 8px;">Start charts to detect SMC patterns</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="page-container" id="settingsPage">
-            <div class="settings-section">
-                <div class="settings-item">
-                    <div class="settings-label">SMC Analysis</div>
-                    <div class="toggle-switch active" onclick="toggleSetting(this, 'smc')">
-                        <div class="toggle-thumb"></div>
-                    </div>
-                </div>
-                <div class="settings-item">
-                    <div class="settings-label">Show Order Blocks</div>
-                    <div class="toggle-switch active" onclick="toggleSetting(this, 'ob')">
-                        <div class="toggle-thumb"></div>
-                    </div>
-                </div>
-                <div class="settings-item">
-                    <div class="settings-label">Show FVG</div>
-                    <div class="toggle-switch active" onclick="toggleSetting(this, 'fvg')">
-                        <div class="toggle-thumb"></div>
-                    </div>
-                </div>
-                <div class="settings-item">
-                    <div class="settings-label">Sound Alerts</div>
-                    <div class="toggle-switch active" onclick="toggleSetting(this, 'sound')">
-                        <div class="toggle-thumb"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="settings-section" style="margin-top: 20px;">
-                <div class="settings-item">
-                    <div class="settings-label">Clear All Signals</div>
-                    <button class="toolbar-btn" onclick="clearAllSignals()" style="padding: 8px 16px;">Clear</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="mt5-bottom-nav">
-            <div class="nav-item active" onclick="switchPage('chartsPage')">
-                <div class="nav-icon">📈</div>
-                <div class="nav-label">Charts</div>
-            </div>
-            <div class="nav-item" onclick="switchPage('signalsPage')">
-                <div class="nav-icon">🎯</div>
-                <div class="nav-label">Signals</div>
-            </div>
-            <div class="nav-item" onclick="switchPage('settingsPage')">
-                <div class="nav-icon">⚙️</div>
-                <div class="nav-label">Settings</div>
-            </div>
+        <!-- Bottom Toolbar -->
+        <div class="bottom-toolbar">
+            <button class="toolbar-btn active">
+                <div class="toolbar-icon">📈</div>
+                <div class="toolbar-label">Chart</div>
+            </button>
+            <button class="toolbar-btn" onclick="showIndicators()">
+                <div class="toolbar-icon">📊</div>
+                <div class="toolbar-label">Indicators</div>
+            </button>
+            <button class="toolbar-btn" onclick="window.location.href='gold-positions.html'">
+                <div class="toolbar-icon">💼</div>
+                <div class="toolbar-label">Positions</div>
+            </button>
+            <button class="toolbar-btn" onclick="window.location.href='gold-history.html'">
+                <div class="toolbar-icon">📋</div>
+                <div class="toolbar-label">History</div>
+            </button>
         </div>
     </div>
 
-    <script src="analysis.js"></script>
+    <!-- Trade Button -->
+    <button class="trade-button" onclick="openTrade()">+</button>
+
+    <!-- Indicators Panel -->
+    <div class="indicators-panel" id="indicatorsPanel">
+        <div class="panel-header">
+            <div class="panel-title">Indicators</div>
+            <button class="panel-close" onclick="closeIndicators()">×</button>
+        </div>
+        <div class="indicator-item" onclick="toggleIndicator('ma')">
+            <div class="indicator-name">Moving Average</div>
+            <div class="indicator-toggle" id="maToggle"></div>
+        </div>
+        <div class="indicator-item" onclick="toggleIndicator('ema')">
+            <div class="indicator-name">EMA</div>
+            <div class="indicator-toggle" id="emaToggle"></div>
+        </div>
+        <div class="indicator-item" onclick="toggleIndicator('bb')">
+            <div class="indicator-name">Bollinger Bands</div>
+            <div class="indicator-toggle" id="bbToggle"></div>
+        </div>
+        <div class="indicator-item" onclick="toggleIndicator('rsi')">
+            <div class="indicator-name">RSI</div>
+            <div class="indicator-toggle" id="rsiToggle"></div>
+        </div>
+        <div class="indicator-item" onclick="toggleIndicator('macd')">
+            <div class="indicator-name">MACD</div>
+            <div class="indicator-toggle" id="macdToggle"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        const app = initializeApp({
+            apiKey: "AIzaSyC8Yh7DY90nujN6OiVD6kIHu3b-M0Kgero",
+            authDomain: "mzanzifx.firebaseapp.com",
+            databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com",
+            projectId: "mzanzifx",
+            storageBucket: "mzanzifx.firebasestorage.app",
+            messagingSenderId: "589859282488",
+            appId: "1:589859282488:web:14f12501983b021cc1d0cd"
+        });
+
+        const auth = getAuth(app);
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'index.html';
+        });
+
+        window.logout = async function() {
+            if (confirm('Logout from Gold Trading?')) {
+                try {
+                    await signOut(auth);
+                    window.location.href = 'index.html';
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+            }
+        };
+    </script>
+
+    <script src="gold-chart-engine.js"></script>
 </body>
 </html>
