@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gold Signals - MT5 Style</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #1e1e1e;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* MT5 Header */
+        .mt5-header {
+            background: #2c2c2c;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #3a3a3a;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            font-size: 20px;
+            color: #4a90e2;
+            cursor: pointer;
+        }
+
+        .symbol-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: #252525;
+            padding: 10px 12px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid #3a3a3a;
+            color: #999;
+            border-radius: 15px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #4a90e2;
+            color: white;
+            border-color: #4a90e2;
+        }
+
+        /* Signals Container */
+        .signals-container {
+            padding: 12px;
+            padding-bottom: 80px;
+        }
+
+        .signal-card {
+            background: #2c2c2c;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-left: 3px solid #4a90e2;
+            position: relative;
+        }
+
+        .signal-card.bullish {
+            border-left-color: #26a69a;
+        }
+
+        .signal-card.bearish {
+            border-left-color: #ef5350;
+        }
+
+        .signal-card.success {
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .signal-card.failure {
+            background: rgba(239, 83, 80, 0.1);
+        }
+
+        .signal-card.breakeven {
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .signal-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .signal-direction {
+            font-size: 14px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .signal-direction.buy {
+            background: rgba(76, 175, 80, 0.2);
+            color: #26a69a;
+        }
+
+        .signal-direction.sell {
+            background: rgba(239, 83, 80, 0.2);
+            color: #ef5350;
+        }
+
+        .signal-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .signal-status.active {
+            background: rgba(74, 144, 226, 0.2);
+            color: #4a90e2;
+        }
+
+        .signal-status.success {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .signal-status.failure {
+            background: rgba(239, 83, 80, 0.2);
+            color: #ff5252;
+        }
+
+        .signal-status.breakeven {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+
+        .signal-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #3a3a3a;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .signal-checkbox.checked {
+            background: #4a90e2;
+            border-color: #4a90e2;
+        }
+
+        .signal-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .detail-item {
+            background: #1e1e1e;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .detail-label {
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Roboto', monospace;
+        }
+
+        .detail-value.green {
+            color: #4caf50;
+        }
+
+        .detail-value.red {
+            color: #ff5252;
+        }
+
+        .detail-value.gold {
+            color: #ffd700;
+        }
+
+        .signal-levels {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+
+        .level-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+
+        .level-label {
+            color: #999;
+        }
+
+        .level-value {
+            font-weight: 700;
+            font-family: 'Roboto', monospace;
+        }
+
+        .signal-time {
+            font-size: 10px;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        /* Generate Button */
+        .generate-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        /* Delete Toolbar */
+        .delete-toolbar {
+            position: fixed;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            background: #2c2c2c;
+            padding: 12px;
+            border-top: 1px solid #3a3a3a;
+            display: none;
+            z-index: 60;
+        }
+
+        .delete-toolbar.active {
+            display: block;
+        }
+
+        .delete-btn {
+            width: 100%;
+            padding: 12px;
+            background: #ff5252;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2c2c2c;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            border-top: 1px solid #3a3a3a;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 12px;
+        }
+
+        .nav-item.active {
+            color: #4a90e2;
+        }
+
+        .nav-icon {
+            font-size: 22px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .no-signals {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .no-signals-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mt5-header">
+        <div class="header-left">
+            <div class="back-btn" onclick="window.location.href='gold-trading.html'">←</div>
+            <div class="symbol-name">XAUUSD Signals</div>
+        </div>
+        <div class="header-right">
+            <div class="header-icon" onclick="showSettings()">⚙️</div>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterSignals('all')">All</button>
+        <button class="filter-btn" onclick="filterSignals('active')">Active</button>
+        <button class="filter-btn" onclick="filterSignals('success')">Success</button>
+        <button class="filter-btn" onclick="filterSignals('failure')">Failure</button>
+        <button class="filter-btn" onclick="filterSignals('breakeven')">Break Even</button>
+        <button class="filter-btn" onclick="filterSignals('bullish')">Bullish</button>
+        <button class="filter-btn" onclick="filterSignals('bearish')">Bearish</button>
+    </div>
+
+    <div class="signals-container" id="signalsContainer">
+        <div class="loading">Loading signals...</div>
+    </div>
+
+    <button class="generate-btn" onclick="generateSignal()" title="Generate New Signal">⚡</button>
+
+    <div class="delete-toolbar" id="deleteToolbar">
+        <button class="delete-btn" onclick="deleteSelected()">Delete Selected</button>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='gold-trading.html'">
+            <div class="nav-icon">📈</div>
+            <div class="nav-label">Chart</div>
+        </div>
+        <div class="nav-item active">
+            <div class="nav-icon">🎯</div>
+            <div class="nav-label">Signals</div>
+        </div>
+        <div class="nav-item" onclick="window.location.href='gold-history.html'">
+            <div class="nav-icon">📋</div>
+            <div class="nav-label">History</div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getDatabase, ref, onValue, push, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        const app = initializeApp({
+            apiKey: "AIzaSyC8Yh7DY90nujN6OiVD6kIHu3b-M0Kgero",
+            authDomain: "mzanzifx.firebaseapp.com",
+            databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com",
+            projectId: "mzanzifx",
+            storageBucket: "mzanzifx.firebasestorage.app",
+            messagingSenderId: "589859282488",
+            appId: "1:589859282488:web:14f12501983b021cc1d0cd"
+        });
+
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+        
+        let currentUser = null;
+        
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                currentUser = user;
+                window.userId = user.uid;
+                loadSignals();
+                startSignalTracking();
+            }
+        });
+
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebasePush = push;
+        window.firebaseRemove = remove;
+        window.firebaseUpdate = update;
+        window.firebaseOnValue = onValue;
+    </script>
+
+    <script src="gold-signals-engine.js"></script>
+</body>
+</html>
