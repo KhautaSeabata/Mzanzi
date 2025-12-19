@@ -199,7 +199,9 @@ function drawChart() {
     ctx.fillRect(0, 0, width, height);
     
     // Calculate visible candles based on zoom
-    const visibleCandles = Math.floor(chartWidth / (4 * zoom + 2));
+    // Add 20% extra space at the end
+    const effectiveChartWidth = chartWidth * 0.8; // Use only 80% of width for candles
+    const visibleCandles = Math.floor(effectiveChartWidth / (4 * zoom + 2));
     const startIdx = Math.max(0, chartData.length - visibleCandles - scroll);
     const endIdx = Math.min(chartData.length, startIdx + visibleCandles);
     const visibleData = chartData.slice(startIdx, endIdx);
@@ -216,28 +218,31 @@ function drawChart() {
     // Draw grid lines
     drawGrid(minPrice, maxPrice, priceRange, chartWidth, chartHeight);
     
-    // Draw candles
-    const candleWidth = Math.max(2, (chartWidth / visibleData.length) - 2);
+    // Draw candles with 20% right padding
+    const effectiveChartWidth = chartWidth * 0.8; // Use 80% of width
+    const candleWidth = Math.max(2, (effectiveChartWidth / visibleData.length) - 2);
     
     visibleData.forEach((candle, i) => {
-        const x = chartPadding.left + (i * (chartWidth / visibleData.length));
+        const x = chartPadding.left + (i * (effectiveChartWidth / visibleData.length));
         drawCandle(candle, x, candleWidth, minPrice, maxPrice, priceScale);
     });
     
-    // Draw indicators
-    if (indicators.ma) drawMA(visibleData, chartWidth, chartHeight, minPrice, maxPrice, priceScale);
-    if (indicators.ema) drawEMA(visibleData, chartWidth, chartHeight, minPrice, maxPrice, priceScale);
-    if (indicators.bb) drawBollingerBands(visibleData, chartWidth, chartHeight, minPrice, maxPrice, priceScale);
+    // Draw indicators (with 20% right padding consideration)
+    const effectiveChartWidth = chartWidth * 0.8;
+    if (indicators.ma) drawMA(visibleData, effectiveChartWidth, chartHeight, minPrice, maxPrice, priceScale);
+    if (indicators.ema) drawEMA(visibleData, effectiveChartWidth, chartHeight, minPrice, maxPrice, priceScale);
+    if (indicators.bb) drawBollingerBands(visibleData, effectiveChartWidth, chartHeight, minPrice, maxPrice, priceScale);
     
     // Draw price scale
     drawPriceScale(minPrice, maxPrice, priceRange, width, height);
     
-    // Draw time scale
-    drawTimeScale(visibleData, chartWidth, height);
+    // Draw time scale (with 20% right padding)
+    const effectiveTimeWidth = chartWidth * 0.8;
+    drawTimeScale(visibleData, effectiveTimeWidth, height);
     
     // Draw crosshair
     if (crosshairEnabled) {
-        drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth);
+        drawCrosshair(minPrice, maxPrice, priceScale, visibleData, effectiveChartWidth);
     }
 }
 
@@ -444,6 +449,15 @@ function drawBollingerBands(data, chartWidth, chartHeight, minPrice, maxPrice, p
 function drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth) {
     if (!crosshairX || !crosshairY) return;
     
+    // Only show crosshair within the effective chart area (80% width)
+    const effectiveWidth = chartWidth;
+    const maxX = chartPadding.left + effectiveWidth;
+    
+    if (crosshairX > maxX) {
+        // Don't show crosshair in the 20% padding area
+        return;
+    }
+    
     // Draw crosshair lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 1;
@@ -464,7 +478,7 @@ function drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth) 
     ctx.setLineDash([]);
     
     // Find nearest candle and update info box
-    const candleIndex = Math.floor((crosshairX - chartPadding.left) / (chartWidth / visibleData.length));
+    const candleIndex = Math.floor((crosshairX - chartPadding.left) / (effectiveWidth / visibleData.length));
     if (candleIndex >= 0 && candleIndex < visibleData.length) {
         const candle = visibleData[candleIndex];
         updateCrosshairInfo(candle);
