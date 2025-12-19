@@ -79,7 +79,7 @@
         /* Price Ticker */
         .price-ticker {
             background: #252525;
-            padding: 10px 12px;
+            padding: 6px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -89,18 +89,18 @@
         .current-price {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
         }
 
         .bid-price {
-            font-size: 24px;
+            font-size: 18px;
             font-weight: 700;
             color: #ff5252;
             font-family: 'Roboto', monospace;
         }
 
         .ask-price {
-            font-size: 13px;
+            font-size: 10px;
             color: #999;
             font-family: 'Roboto', monospace;
         }
@@ -109,11 +109,11 @@
             display: flex;
             flex-direction: column;
             align-items: flex-end;
-            gap: 2px;
+            gap: 1px;
         }
 
         .change-value {
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 500;
             font-family: 'Roboto', monospace;
         }
@@ -127,8 +127,8 @@
         }
 
         .change-percent {
-            font-size: 12px;
-            padding: 2px 6px;
+            font-size: 10px;
+            padding: 2px 5px;
             border-radius: 3px;
             font-weight: 500;
         }
@@ -485,10 +485,10 @@
         /* Volume Bar */
         .volume-bar {
             background: #252525;
-            padding: 8px 12px;
+            padding: 4px 12px;
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
+            font-size: 10px;
             color: #999;
             border-bottom: 1px solid #3a3a3a;
         }
@@ -496,16 +496,18 @@
         .volume-item {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
         }
 
         .volume-label {
             color: #666;
+            font-size: 9px;
         }
 
         .volume-value {
             color: #fff;
             font-weight: 500;
+            font-size: 11px;
         }
     </style>
 </head>
@@ -684,6 +686,6 @@
         };
     </script>
 
-    <script src="gold-chart-engine.js"></script>
+    <script src="gold-data-engine.js"></script>
 </body>
 </html>
