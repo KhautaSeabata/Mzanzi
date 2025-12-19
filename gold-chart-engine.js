@@ -65,25 +65,35 @@ function resizeCanvas() {
 function connectWebSocket() {
     if (ws) ws.close();
     
+    console.log('Connecting to Deriv WebSocket...');
     ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
     
     ws.onopen = () => {
-        console.log('Connected to Deriv WebSocket');
+        console.log('✓ Connected to Deriv WebSocket');
         isConnected = true;
         requestCandles();
     };
     
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data.msg_type || 'unknown');
         
         if (data.error) {
             console.error('API Error:', data.error);
+            alert('Error loading Gold data: ' + data.error.message);
             hideLoading();
+            
+            // Try alternative symbol
+            console.log('Trying alternative symbol...');
+            setTimeout(() => {
+                requestCandlesAlternative();
+            }, 2000);
             return;
         }
         
         if (data.candles) {
             // Historical candles received
+            console.log('✓ Received candles:', data.candles.length);
             chartData = data.candles.map(c => ({
                 time: c.epoch * 1000,
                 o: parseFloat(c.open),
@@ -92,6 +102,7 @@ function connectWebSocket() {
                 c: parseFloat(c.close)
             }));
             
+            console.log('✓ Chart data loaded, first price:', chartData[0]?.c);
             hideLoading();
             drawChart();
             updatePriceTicker();
@@ -100,6 +111,7 @@ function connectWebSocket() {
             subscribeTicks();
         } else if (data.tick) {
             // Live tick received
+            console.log('✓ Live tick:', data.tick.quote);
             updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
         } else if (data.ohlc) {
             // Live candle update
@@ -117,18 +129,33 @@ function connectWebSocket() {
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         isConnected = false;
+        hideLoading();
     };
     
     ws.onclose = () => {
-        console.log('WebSocket closed');
+        console.log('WebSocket closed, will reconnect...');
         isConnected = false;
         setTimeout(connectWebSocket, 5000);
     };
 }
 
 function requestCandles() {
+    console.log('Requesting Gold candles (frxGOLD)...');
     ws.send(JSON.stringify({
-        ticks_history: 'frxXAUUSD',
+        ticks_history: 'frxGOLD',
+        adjust_start_time: 1,
+        count: 300,
+        end: 'latest',
+        start: 1,
+        style: 'candles',
+        granularity: currentTimeframe
+    }));
+}
+
+function requestCandlesAlternative() {
+    console.log('Requesting Gold candles (alternative: 1HZ100V)...');
+    ws.send(JSON.stringify({
+        ticks_history: '1HZ100V',
         adjust_start_time: 1,
         count: 300,
         end: 'latest',
@@ -139,8 +166,9 @@ function requestCandles() {
 }
 
 function subscribeTicks() {
+    console.log('Subscribing to live ticks...');
     ws.send(JSON.stringify({
-        ticks: 'frxXAUUSD',
+        ticks: 'frxGOLD',
         subscribe: 1
     }));
 }
