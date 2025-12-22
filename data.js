@@ -49,7 +49,7 @@ const SYMBOLS = {
 // Global State
 let canvas, ctx;
 let chartData = [];
-let currentSymbol = 'US30';
+let currentSymbol = 'XAUUSD'; // Default to Gold (working perfectly)
 let currentTimeframe = 300;
 let ws = null;
 let isConnected = false;
@@ -78,6 +78,9 @@ const chartPadding = {
 document.addEventListener('DOMContentLoaded', () => {
     canvas = document.getElementById('chartCanvas');
     ctx = canvas.getContext('2d');
+    
+    console.log('🚀 Trading Terminal Starting...');
+    console.log(`📊 Default Symbol: ${currentSymbol} (Gold)`);
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
