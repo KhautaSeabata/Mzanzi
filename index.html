@@ -28,6 +28,10 @@
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: 'Outfit', sans-serif;
             background: var(--terminal-bg);
@@ -50,15 +54,571 @@
             z-index: 0;
         }
 
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(19, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--terminal-border);
+            padding: 15px 30px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--terminal-accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px var(--glow-green);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--terminal-muted);
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--terminal-accent);
+            border-color: var(--terminal-accent);
+            box-shadow: 0 0 15px var(--glow-green);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            color: var(--terminal-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--terminal-accent);
+            animation: pulse 2s infinite;
+        }
+
+        /* Sections */
+        section {
+            min-height: 100vh;
+            padding: 80px 30px 30px;
             position: relative;
             z-index: 1;
         }
 
-        header {
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Chart Section */
+        #chartSection {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding-top: 70px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--terminal-accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px var(--glow-green);
+        }
+
+        .index-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .index-btn {
+            padding: 12px 24px;
+            background: var(--terminal-surface);
+            border: 2px solid var(--terminal-border);
+            border-radius: 8px;
+            color: var(--terminal-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .index-btn:hover {
+            border-color: var(--terminal-accent);
+            color: var(--terminal-accent);
+            box-shadow: 0 0 15px var(--glow-green);
+        }
+
+        .index-btn.active {
+            background: var(--terminal-accent);
+            border-color: var(--terminal-accent);
+            color: var(--terminal-bg);
+            box-shadow: 0 0 20px var(--glow-green);
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            background: var(--terminal-surface);
+            border: 1px solid var(--terminal-border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #chartContainer {
+            height: 100%;
+            width: 100%;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            animation: bounce 2s infinite;
+            cursor: pointer;
+        }
+
+        .scroll-indicator-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            color: var(--terminal-muted);
+            margin-bottom: 10px;
+        }
+
+        .scroll-arrow {
+            width: 30px;
+            height: 30px;
+            border-left: 2px solid var(--terminal-accent);
+            border-bottom: 2px solid var(--terminal-accent);
+            transform: rotate(-45deg);
+            margin: 0 auto;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
+
+        /* Signals Section */
+        #signalsSection {
+            background: linear-gradient(180deg, var(--terminal-bg) 0%, #0d1220 100%);
+        }
+
+        .signals-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 1200px) {
+            .signals-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--terminal-surface);
+            border: 1px solid var(--terminal-border);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .panel-header {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2em;
+            font-weight: 700;
+            color: var(--terminal-accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--terminal-border);
+        }
+
+        .signal-output {
+            background: var(--terminal-bg);
+            border: 2px solid var(--terminal-border);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            min-height: 300px;
+        }
+
+        .signal-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--terminal-border);
+        }
+
+        .signal-item:last-child {
+            border-bottom: none;
+        }
+
+        .signal-label {
+            color: var(--terminal-muted);
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 1px;
+        }
+
+        .signal-value {
+            font-weight: 700;
+            color: var(--terminal-text);
+        }
+
+        .signal-value.buy {
+            color: var(--terminal-accent);
+        }
+
+        .signal-value.sell {
+            color: var(--terminal-danger);
+        }
+
+        .volatility-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .volatility-vh {
+            background: var(--terminal-danger);
+            color: white;
+        }
+
+        .volatility-h {
+            background: var(--terminal-warning);
+            color: var(--terminal-bg);
+        }
+
+        .volatility-m {
+            background: #4499ff;
+            color: white;
+        }
+
+        .volatility-l {
+            background: var(--terminal-accent);
+            color: var(--terminal-bg);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--terminal-accent), #00cc6a);
+            border: none;
+            border-radius: 8px;
+            color: var(--terminal-bg);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px var(--glow-green);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px var(--glow-green);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            background: var(--terminal-border);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* History Panel */
+        .history-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: var(--terminal-bg);
+            border: 1px solid var(--terminal-border);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            border-color: var(--terminal-accent);
+            box-shadow: 0 0 10px var(--glow-green);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .history-index {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1em;
+            color: var(--terminal-accent);
+        }
+
+        .history-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8em;
+            color: var(--terminal-muted);
+        }
+
+        .btn-delete {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: var(--terminal-danger);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-delete:hover {
+            background: #ff1144;
+            box-shadow: 0 0 10px var(--glow-red);
+        }
+
+        /* Companies Section */
+        #companiesSection {
+            background: linear-gradient(180deg, #0d1220 0%, var(--terminal-bg) 100%);
+        }
+
+        .companies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .company-card {
+            background: var(--terminal-surface);
+            border: 1px solid var(--terminal-border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .company-card:hover {
+            border-color: var(--terminal-accent);
+            box-shadow: 0 0 15px var(--glow-green);
+            transform: translateY(-2px);
+        }
+
+        .company-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .company-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1em;
+            color: var(--terminal-accent);
+        }
+
+        .company-symbol {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            color: var(--terminal-muted);
+            background: var(--terminal-bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .company-data {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            padding: 8px 0;
+            border-top: 1px solid var(--terminal-border);
+        }
+
+        .company-label {
+            color: var(--terminal-muted);
+        }
+
+        .company-value {
+            font-weight: 700;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--terminal-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--terminal-border);
+            border-top-color: var(--terminal-accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--terminal-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--terminal-border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--terminal-accent);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 15px;
+            }
+
+            .logo {
+                font-size: 1em;
+            }
+
+            .nav-links {
+                gap: 15px;
+            }
+
+            .nav-link {
+                font-size: 0.8em;
+                padding: 6px 12px;
+            }
+
+            section {
+                padding: 70px 15px 20px;
+            }
+
+            .section-title {
+                font-size: 1.3em;
+            }
+
+            .index-selector {
+                width: 100%;
+            }
+
+            .index-btn {
+                flex: 1;
+                padding: 10px 16px;
+                font-size: 0.85em;
+            }
+
+            .companies-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
             background: var(--terminal-surface);
             border: 1px solid var(--terminal-border);
             border-radius: 12px;
@@ -445,71 +1005,83 @@
 <body>
     <div class="matrix-bg"></div>
     
-    <div class="container">
-        <header>
-            <h1>⚡ MzanziFX Signal Generator</h1>
-            <p class="subtitle">Real-time Index Analysis & Trading Signals</p>
-            <div class="status-bar">
-                <div class="status-item">
-                    <div class="status-dot"></div>
-                    <span>System Online</span>
-                </div>
-                <div class="status-item">
-                    <div class="status-dot"></div>
-                    <span id="connectionStatus">Connecting to Firebase...</span>
-                </div>
-                <div class="status-item">
-                    <span id="lastUpdate">Awaiting data...</span>
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">⚡ MzanziFX</div>
+        <div class="nav-links">
+            <a href="#chartSection" class="nav-link">Chart</a>
+            <a href="#signalsSection" class="nav-link">Signals</a>
+            <a href="#companiesSection" class="nav-link">Companies</a>
+            <a href="data-analyzer.html" class="nav-link">Analytics</a>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span id="connectionStatus">Connecting...</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Chart Section (Full Screen) -->
+    <section id="chartSection">
+        <div class="container">
+            <div class="chart-header">
+                <h1 class="section-title">📈 Live Market Chart</h1>
+                <div class="index-selector">
+                    <button class="index-btn active" onclick="selectIndex('US100')">US100</button>
+                    <button class="index-btn" onclick="selectIndex('US30')">US30</button>
+                    <button class="index-btn" onclick="selectIndex('GER40')">GER40</button>
+                    <button class="index-btn" onclick="selectIndex('XAUUSD')">GOLD</button>
                 </div>
             </div>
-        </header>
+            <div class="chart-wrapper">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+        <div class="scroll-indicator" onclick="scrollToSection('signalsSection')">
+            <div class="scroll-indicator-text">Scroll for Signals</div>
+            <div class="scroll-arrow"></div>
+        </div>
+    </section>
 
-        <div class="main-grid">
-            <div>
+    <!-- Signals Section -->
+    <section id="signalsSection">
+        <div class="container">
+            <h1 class="section-title">🎯 Trading Signals</h1>
+            <div class="signals-grid">
                 <div class="panel">
-                    <div class="panel-header">📊 Live Chart</div>
-                    <div class="index-selector">
-                        <button class="index-btn active" onclick="selectIndex('US100')">US100</button>
-                        <button class="index-btn" onclick="selectIndex('US30')">US30</button>
-                        <button class="index-btn" onclick="selectIndex('GER40')">GER40</button>
-                    </div>
-                    <div id="chartContainer">
-                        <canvas id="priceChart"></canvas>
-                    </div>
-                    <button class="btn-primary" onclick="generateSignal()">
-                        🎯 Generate Signal
-                    </button>
-                </div>
-
-                <div class="panel history-panel">
                     <div class="panel-header">📜 Signal History</div>
-                    <div id="historyContainer" class="companies-list">
+                    <div class="history-container" id="historyContainer">
                         <div class="loading">Loading historical signals...</div>
                     </div>
                 </div>
-            </div>
 
-            <div>
-                <div class="panel">
-                    <div class="panel-header">🎯 Current Signal</div>
-                    <div class="signal-output" id="signalOutput">
-                        <div class="loading">
-                            <div style="text-align: center; padding: 40px 0;">
-                                Select an index and click "Generate Signal" to analyze
+                <div>
+                    <div class="panel">
+                        <div class="panel-header">⚡ Current Signal</div>
+                        <div class="signal-output" id="signalOutput">
+                            <div class="loading">
+                                <div style="text-align: center; padding: 40px 0;">
+                                    Select an index above and click "Generate Signal"
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="panel" style="margin-top: 20px;">
-                    <div class="panel-header">🏢 Top Companies</div>
-                    <div id="companiesContainer" class="companies-list">
-                        <div class="loading">Awaiting analysis...</div>
+                        <button class="btn-primary" onclick="generateSignal()">
+                            🎯 Generate Signal
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
+
+    <!-- Companies Section -->
+    <section id="companiesSection">
+        <div class="container">
+            <h1 class="section-title">🏢 Top Companies - <span id="currentIndexName">US100</span></h1>
+            <div class="companies-grid" id="companiesContainer">
+                <div class="loading">Loading company data...</div>
+            </div>
+        </div>
+    </section>
 
     <script>
         // Firebase Configuration
@@ -517,8 +1089,26 @@
             databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        // Initialize Firebase with error handling
+        let database;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            database = firebase.database();
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            // Create a mock database object if Firebase fails
+            database = {
+                ref: (path) => ({
+                    on: (event, callback) => console.log('Mock database ref'),
+                    once: (event) => Promise.resolve({ val: () => null, forEach: () => {} }),
+                    push: () => ({ set: () => Promise.resolve() }),
+                    remove: () => Promise.resolve()
+                })
+            };
+        }
 
         // Global variables
         let currentIndex = 'US100';
@@ -529,35 +1119,73 @@
         };
 
         // Update connection status
-        const connectedRef = database.ref('.info/connected');
-        connectedRef.on('value', (snap) => {
-            if (snap.val() === true) {
-                document.getElementById('connectionStatus').textContent = 'Firebase Connected';
-            } else {
-                document.getElementById('connectionStatus').textContent = 'Firebase Disconnected';
-            }
-        });
+        try {
+            const connectedRef = database.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    document.getElementById('connectionStatus').textContent = 'Connected';
+                } else {
+                    document.getElementById('connectionStatus').textContent = 'Disconnected';
+                }
+            });
+        } catch (error) {
+            document.getElementById('connectionStatus').textContent = 'Offline Mode';
+        }
 
-        // Initialize chart
+        // Smooth scroll function
+        function scrollToSection(sectionId) {
+            document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Generate candlestick data
+        function generateCandlestickData(basePrice, count) {
+            const data = [];
+            let price = basePrice;
+            const now = new Date();
+
+            for (let i = count; i >= 0; i--) {
+                const time = new Date(now - i * 3600000); // 1 hour intervals
+                
+                const open = price;
+                const volatility = price * 0.002; // 0.2% volatility
+                
+                const close = open + (Math.random() - 0.5) * volatility * 4;
+                const high = Math.max(open, close) + Math.random() * volatility;
+                const low = Math.min(open, close) - Math.random() * volatility;
+                
+                data.push({
+                    x: time.getTime(),
+                    o: parseFloat(open.toFixed(2)),
+                    h: parseFloat(high.toFixed(2)),
+                    l: parseFloat(low.toFixed(2)),
+                    c: parseFloat(close.toFixed(2))
+                });
+                
+                price = close;
+            }
+
+            return data;
+        }
+
+        // Initialize chart with candlesticks
         function initChart() {
             const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            const basePrice = {
+                'US100': 16500,
+                'US30': 37000,
+                'GER40': 17000,
+                'XAUUSD': 2650
+            };
+
+            chartData.data = generateCandlestickData(basePrice[currentIndex], 48);
+
             chart = new Chart(ctx, {
-                type: 'line',
+                type: 'candlestick',
                 data: {
-                    labels: chartData.labels,
                     datasets: [{
                         label: currentIndex,
-                        data: chartData.data,
-                        borderColor: '#00ff88',
-                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#00ff88',
-                        pointBorderColor: '#0a0e1a',
-                        pointBorderWidth: 2
+                        data: chartData.data
                     }]
                 },
                 options: {
@@ -581,13 +1209,30 @@
                             },
                             bodyFont: {
                                 family: 'JetBrains Mono',
-                                size: 14,
-                                weight: 'bold'
+                                size: 13
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.raw;
+                                    return [
+                                        'O: ' + point.o,
+                                        'H: ' + point.h,
+                                        'L: ' + point.l,
+                                        'C: ' + point.c
+                                    ];
+                                }
                             }
                         }
                     },
                     scales: {
                         x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM dd HH:mm'
+                                }
+                            },
                             grid: {
                                 color: '#1e2d4a',
                                 drawBorder: false
@@ -613,45 +1258,49 @@
                                 }
                             }
                         }
-                    },
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
                     }
                 }
             });
         }
 
-        // Generate mock chart data (simulating live price data)
-        function generateMockChartData() {
-            const basePrice = {
-                'US100': 16500,
-                'US30': 37000,
-                'GER40': 17000
-            };
-
-            chartData.labels = [];
-            chartData.data = [];
-
-            const now = new Date();
-            let price = basePrice[currentIndex];
-
-            for (let i = 30; i >= 0; i--) {
-                const time = new Date(now - i * 60000); // 1 minute intervals
-                chartData.labels.push(time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+        // Custom candlestick chart controller
+        class CandlestickController extends Chart.LineController {
+            draw() {
+                const ctx = this.chart.ctx;
+                const meta = this.getMeta();
                 
-                // Simulate price movement
-                price += (Math.random() - 0.5) * (price * 0.001);
-                chartData.data.push(price.toFixed(2));
-            }
-
-            if (chart) {
-                chart.data.labels = chartData.labels;
-                chart.data.datasets[0].data = chartData.data;
-                chart.data.datasets[0].label = currentIndex;
-                chart.update();
+                meta.data.forEach((point, index) => {
+                    const data = this.chart.data.datasets[0].data[index];
+                    const x = point.x;
+                    const yOpen = this.chart.scales.y.getPixelForValue(data.o);
+                    const yClose = this.chart.scales.y.getPixelForValue(data.c);
+                    const yHigh = this.chart.scales.y.getPixelForValue(data.h);
+                    const yLow = this.chart.scales.y.getPixelForValue(data.l);
+                    
+                    const isGreen = data.c >= data.o;
+                    const color = isGreen ? '#00ff88' : '#ff3366';
+                    const width = 8;
+                    
+                    // Draw wick
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, yHigh);
+                    ctx.lineTo(x, yLow);
+                    ctx.stroke();
+                    
+                    // Draw body
+                    ctx.fillStyle = color;
+                    const bodyTop = Math.min(yOpen, yClose);
+                    const bodyHeight = Math.abs(yClose - yOpen) || 1;
+                    ctx.fillRect(x - width/2, bodyTop, width, bodyHeight);
+                });
             }
         }
+
+        CandlestickController.id = 'candlestick';
+        CandlestickController.defaults = Chart.LineController.defaults;
+        Chart.register(CandlestickController);
 
         // Select index
         function selectIndex(index) {
@@ -660,11 +1309,30 @@
             // Update button states
             document.querySelectorAll('.index-btn').forEach(btn => {
                 btn.classList.remove('active');
+                if (btn.textContent === index || (btn.textContent === 'GOLD' && index === 'XAUUSD')) {
+                    btn.classList.add('active');
+                }
             });
-            event.target.classList.add('active');
+
+            // Update current index name
+            document.getElementById('currentIndexName').textContent = index === 'XAUUSD' ? 'XAUUSD (GOLD)' : index;
 
             // Update chart
-            generateMockChartData();
+            const basePrice = {
+                'US100': 16500,
+                'US30': 37000,
+                'GER40': 17000,
+                'XAUUSD': 2650
+            };
+            
+            chartData.data = generateCandlestickData(basePrice[index], 48);
+            chart.data.datasets[0].data = chartData.data;
+            chart.data.datasets[0].label = index;
+            chart.update();
+            
+            // Update companies display
+            const companies = getTopCompanies(currentIndex);
+            displayCompanies(companies);
             
             // Clear current signal
             document.getElementById('signalOutput').innerHTML = `
@@ -673,10 +1341,6 @@
                         Click "Generate Signal" to analyze ${index}
                     </div>
                 </div>
-            `;
-            
-            document.getElementById('companiesContainer').innerHTML = `
-                <div class="loading">Awaiting analysis...</div>
             `;
         }
 
@@ -718,9 +1382,234 @@
                     { name: 'BMW', symbol: 'BMW', change: '+0.2%', weight: '4.8%' },
                     { name: 'Bayer', symbol: 'BAYN', change: '-0.8%', weight: '4.3%' },
                     { name: 'Deutsche Bank', symbol: 'DBK', change: '+1.2%', weight: '3.9%' }
+                ],
+                'XAUUSD': [
+                    { name: 'US Dollar Index', symbol: 'DXY', change: '-0.3%', weight: '45%' },
+                    { name: 'US 10Y Treasury', symbol: 'US10Y', change: '+0.2%', weight: '25%' },
+                    { name: 'Federal Reserve', symbol: 'FED', change: '0.0%', weight: '20%' },
+                    { name: 'EUR/USD', symbol: 'EURUSD', change: '+0.4%', weight: '15%' },
+                    { name: 'Oil (WTI)', symbol: 'CL', change: '+1.1%', weight: '12%' },
+                    { name: 'S&P 500', symbol: 'SPX', change: '+0.6%', weight: '10%' },
+                    { name: 'VIX (Fear Index)', symbol: 'VIX', change: '-2.3%', weight: '8%' },
+                    { name: 'Silver', symbol: 'XAGUSD', change: '+0.9%', weight: '8%' },
+                    { name: 'Bitcoin', symbol: 'BTC', change: '+1.8%', weight: '5%' },
+                    { name: 'Inflation (CPI)', symbol: 'CPI', change: '+0.1%', weight: '5%' }
                 ]
             };
             return companies[index] || [];
+        }
+
+        // SMC/ICT Analysis for XAUUSD
+        function analyzeSMC(candleData) {
+            const candles = candleData.slice(-50); // Last 50 candles
+            
+            // 1. Order Blocks (ICT)
+            const orderBlocks = identifyOrderBlocks(candles);
+            
+            // 2. Fair Value Gaps (FVG)
+            const fvg = identifyFVG(candles);
+            
+            // 3. Break of Structure (BOS) / Change of Character (CHOCH)
+            const structure = identifyStructure(candles);
+            
+            // 4. Liquidity Zones (Buy/Sell Side Liquidity)
+            const liquidity = identifyLiquidity(candles);
+            
+            // 5. Premium/Discount Zones
+            const zones = identifyPremiumDiscount(candles);
+            
+            // 6. Market Maker Model
+            const mmModel = identifyMMModel(candles);
+            
+            return {
+                orderBlocks,
+                fvg,
+                structure,
+                liquidity,
+                zones,
+                mmModel,
+                bias: calculateSMCBias(orderBlocks, fvg, structure, liquidity)
+            };
+        }
+
+        // Identify Order Blocks (ICT Concept)
+        function identifyOrderBlocks(candles) {
+            const blocks = [];
+            for (let i = 2; i < candles.length - 1; i++) {
+                const prev = candles[i - 1];
+                const curr = candles[i];
+                const next = candles[i + 1];
+                
+                // Bullish Order Block: Down candle followed by strong up move
+                if (curr.c < curr.o && next.c > next.o && (next.c - next.o) > (curr.o - curr.c) * 1.5) {
+                    blocks.push({
+                        type: 'bullish',
+                        high: curr.h,
+                        low: curr.l,
+                        index: i
+                    });
+                }
+                
+                // Bearish Order Block: Up candle followed by strong down move
+                if (curr.c > curr.o && next.c < next.o && (next.o - next.c) > (curr.c - curr.o) * 1.5) {
+                    blocks.push({
+                        type: 'bearish',
+                        high: curr.h,
+                        low: curr.l,
+                        index: i
+                    });
+                }
+            }
+            return blocks.slice(-3); // Return last 3 order blocks
+        }
+
+        // Identify Fair Value Gaps
+        function identifyFVG(candles) {
+            const gaps = [];
+            for (let i = 1; i < candles.length - 1; i++) {
+                const prev = candles[i - 1];
+                const curr = candles[i];
+                const next = candles[i + 1];
+                
+                // Bullish FVG
+                if (next.l > prev.h) {
+                    gaps.push({
+                        type: 'bullish',
+                        top: next.l,
+                        bottom: prev.h,
+                        index: i
+                    });
+                }
+                
+                // Bearish FVG
+                if (next.h < prev.l) {
+                    gaps.push({
+                        type: 'bearish',
+                        top: prev.l,
+                        bottom: next.h,
+                        index: i
+                    });
+                }
+            }
+            return gaps.slice(-3);
+        }
+
+        // Identify Break of Structure
+        function identifyStructure(candles) {
+            const swings = [];
+            let lastHigh = 0;
+            let lastLow = Infinity;
+            
+            for (let i = 2; i < candles.length - 2; i++) {
+                const prev = candles[i - 1];
+                const curr = candles[i];
+                const next = candles[i + 1];
+                
+                // Swing High
+                if (curr.h > prev.h && curr.h > next.h) {
+                    if (curr.h > lastHigh) {
+                        swings.push({ type: 'BOS-Bullish', price: curr.h, index: i });
+                        lastHigh = curr.h;
+                    } else {
+                        swings.push({ type: 'CHOCH-Bearish', price: curr.h, index: i });
+                    }
+                }
+                
+                // Swing Low
+                if (curr.l < prev.l && curr.l < next.l) {
+                    if (curr.l < lastLow) {
+                        swings.push({ type: 'BOS-Bearish', price: curr.l, index: i });
+                        lastLow = curr.l;
+                    } else {
+                        swings.push({ type: 'CHOCH-Bullish', price: curr.l, index: i });
+                    }
+                }
+            }
+            return swings.slice(-2);
+        }
+
+        // Identify Liquidity Zones
+        function identifyLiquidity(candles) {
+            const highs = candles.map(c => c.h);
+            const lows = candles.map(c => c.l);
+            
+            const buyLiquidity = Math.min(...lows.slice(-20));
+            const sellLiquidity = Math.max(...highs.slice(-20));
+            
+            return {
+                buyLiquidity,
+                sellLiquidity,
+                range: sellLiquidity - buyLiquidity
+            };
+        }
+
+        // Identify Premium/Discount Zones
+        function identifyPremiumDiscount(candles) {
+            const recent = candles.slice(-20);
+            const high = Math.max(...recent.map(c => c.h));
+            const low = Math.min(...recent.map(c => c.l));
+            const range = high - low;
+            
+            const equilibrium = (high + low) / 2;
+            const premiumZone = equilibrium + (range * 0.25);
+            const discountZone = equilibrium - (range * 0.25);
+            
+            return {
+                premium: premiumZone,
+                equilibrium,
+                discount: discountZone,
+                current: candles[candles.length - 1].c
+            };
+        }
+
+        // Identify Market Maker Model
+        function identifyMMModel(candles) {
+            const lastCandle = candles[candles.length - 1];
+            const recent = candles.slice(-10);
+            
+            const avgVolatility = recent.reduce((sum, c) => sum + (c.h - c.l), 0) / recent.length;
+            const currentVolatility = lastCandle.h - lastCandle.l;
+            
+            // Accumulation/Distribution phases
+            let phase = 'RANGING';
+            if (currentVolatility < avgVolatility * 0.7) {
+                phase = 'ACCUMULATION';
+            } else if (currentVolatility > avgVolatility * 1.3) {
+                phase = 'DISTRIBUTION';
+            }
+            
+            return {
+                phase,
+                volatilityRatio: (currentVolatility / avgVolatility).toFixed(2)
+            };
+        }
+
+        // Calculate SMC Bias
+        function calculateSMCBias(orderBlocks, fvg, structure, liquidity) {
+            let bullishScore = 0;
+            let bearishScore = 0;
+            
+            // Order Blocks
+            orderBlocks.forEach(ob => {
+                if (ob.type === 'bullish') bullishScore += 2;
+                else bearishScore += 2;
+            });
+            
+            // FVG
+            fvg.forEach(gap => {
+                if (gap.type === 'bullish') bullishScore += 1.5;
+                else bearishScore += 1.5;
+            });
+            
+            // Structure
+            structure.forEach(s => {
+                if (s.type.includes('Bullish')) bullishScore += 3;
+                else bearishScore += 3;
+            });
+            
+            if (bullishScore > bearishScore) return 'BULLISH';
+            if (bearishScore > bullishScore) return 'BEARISH';
+            return 'NEUTRAL';
         }
 
         // Calculate volatility
@@ -750,13 +1639,37 @@
 
             // Simulate data scraping and analysis
             setTimeout(() => {
-                const currentPrice = parseFloat(chartData.data[chartData.data.length - 1]);
-                const volatility = calculateVolatility(chartData.data);
+                const lastCandle = chartData.data[chartData.data.length - 1];
+                const currentPrice = lastCandle.c;
+                
+                // Calculate volatility from recent candles
+                const recentPrices = chartData.data.slice(-10).map(c => c.c);
+                let volatility = calculateVolatility(recentPrices);
                 const companies = getTopCompanies(currentIndex);
+                
+                // Apply SMC/ICT analysis for XAUUSD
+                let smcAnalysis = null;
+                let smcBias = null;
+                if (currentIndex === 'XAUUSD') {
+                    smcAnalysis = analyzeSMC(chartData.data);
+                    smcBias = smcAnalysis.bias;
+                    
+                    // Adjust volatility based on MM Model
+                    if (smcAnalysis.mmModel.phase === 'ACCUMULATION') {
+                        volatility = 'L'; // Lower volatility during accumulation
+                    } else if (smcAnalysis.mmModel.phase === 'DISTRIBUTION') {
+                        volatility = 'VH'; // Higher volatility during distribution
+                    }
+                }
                 
                 // Calculate signal parameters
                 const bullishCompanies = companies.filter(c => parseFloat(c.change) > 0).length;
-                const direction = bullishCompanies > 5 ? 'BUY' : 'SELL';
+                let direction = bullishCompanies > companies.length / 2 ? 'BUY' : 'SELL';
+                
+                // Override direction with SMC bias for XAUUSD
+                if (currentIndex === 'XAUUSD' && smcBias && smcBias !== 'NEUTRAL') {
+                    direction = smcBias === 'BULLISH' ? 'BUY' : 'SELL';
+                }
                 
                 const volatilityMultiplier = {
                     'VH': 2.5,
@@ -765,37 +1678,48 @@
                     'L': 1.0
                 }[volatility];
                 
-                const baseMovement = currentPrice * 0.003 * volatilityMultiplier;
+                // For XAUUSD, use tighter scalping parameters
+                const isGold = currentIndex === 'XAUUSD';
+                const baseMovement = isGold 
+                    ? currentPrice * 0.002 * volatilityMultiplier  // 0.2% for gold scalping
+                    : currentPrice * 0.003 * volatilityMultiplier;
                 
                 let entry, tp1, tp2, sl, expectedPips;
                 
                 if (direction === 'BUY') {
-                    entry = currentPrice - (baseMovement * 0.2);
+                    entry = isGold ? currentPrice - (baseMovement * 0.15) : currentPrice - (baseMovement * 0.2);
                     tp1 = entry + baseMovement;
-                    tp2 = entry + (baseMovement * 1.5);
-                    sl = entry - (baseMovement * 0.6);
-                    expectedPips = Math.round((tp1 - entry) * 10);
+                    tp2 = entry + (baseMovement * (isGold ? 1.8 : 1.5));
+                    sl = entry - (baseMovement * (isGold ? 0.5 : 0.6));
+                    expectedPips = isGold ? Math.round((tp1 - entry) * 100) : Math.round((tp1 - entry) * 10);
                 } else {
-                    entry = currentPrice + (baseMovement * 0.2);
+                    entry = isGold ? currentPrice + (baseMovement * 0.15) : currentPrice + (baseMovement * 0.2);
                     tp1 = entry - baseMovement;
-                    tp2 = entry - (baseMovement * 1.5);
-                    sl = entry + (baseMovement * 0.6);
-                    expectedPips = Math.round((entry - tp1) * 10);
+                    tp2 = entry - (baseMovement * (isGold ? 1.8 : 1.5));
+                    sl = entry + (baseMovement * (isGold ? 0.5 : 0.6));
+                    expectedPips = isGold ? Math.round((entry - tp1) * 100) : Math.round((entry - tp1) * 10);
                 }
                 
                 const signal = {
                     index: currentIndex,
                     timestamp: new Date().toISOString(),
                     direction: direction,
-                    entry: entry.toFixed(2),
-                    tp1: tp1.toFixed(2),
-                    tp2: tp2.toFixed(2),
-                    sl: sl.toFixed(2),
+                    entry: entry.toFixed(isGold ? 2 : 2),
+                    tp1: tp1.toFixed(isGold ? 2 : 2),
+                    tp2: tp2.toFixed(isGold ? 2 : 2),
+                    sl: sl.toFixed(isGold ? 2 : 2),
                     volatility: volatility,
                     expectedPips: expectedPips,
-                    currentPrice: currentPrice.toFixed(2),
+                    currentPrice: currentPrice.toFixed(isGold ? 2 : 2),
                     bullishCompanies: bullishCompanies,
-                    totalCompanies: companies.length
+                    totalCompanies: companies.length,
+                    smcAnalysis: isGold ? {
+                        bias: smcBias,
+                        mmPhase: smcAnalysis.mmModel.phase,
+                        orderBlocks: smcAnalysis.orderBlocks.length,
+                        fvg: smcAnalysis.fvg.length,
+                        structure: smcAnalysis.structure.map(s => s.type).join(', ')
+                    } : null
                 };
 
                 // Display signal
@@ -810,19 +1734,55 @@
                 button.disabled = false;
                 button.innerHTML = '🎯 Generate Signal';
                 
-                document.getElementById('lastUpdate').textContent = 
-                    `Last Update: ${new Date().toLocaleTimeString()}`;
+                // Scroll to signals section
+                setTimeout(() => {
+                    scrollToSection('signalsSection');
+                }, 300);
             }, 2000);
         }
 
         // Display signal
         function displaySignal(signal) {
             const volatilityClass = signal.volatility.toLowerCase().replace('v', 'v');
+            const isGold = signal.index === 'XAUUSD';
+            
+            let smcSection = '';
+            if (isGold && signal.smcAnalysis) {
+                smcSection = `
+                    <div style="margin: 15px 0; padding: 15px; background: rgba(0, 255, 136, 0.05); border-left: 3px solid var(--terminal-accent); border-radius: 4px;">
+                        <div style="font-weight: 700; color: var(--terminal-accent); margin-bottom: 10px; text-transform: uppercase; font-size: 0.9em;">
+                            🧠 SMC/ICT Analysis
+                        </div>
+                        <div class="signal-item" style="border: none; padding: 5px 0;">
+                            <span class="signal-label">Market Bias</span>
+                            <span class="signal-value" style="color: ${signal.smcAnalysis.bias === 'BULLISH' ? 'var(--terminal-accent)' : signal.smcAnalysis.bias === 'BEARISH' ? 'var(--terminal-danger)' : 'var(--terminal-warning)'}">
+                                ${signal.smcAnalysis.bias}
+                            </span>
+                        </div>
+                        <div class="signal-item" style="border: none; padding: 5px 0;">
+                            <span class="signal-label">MM Phase</span>
+                            <span class="signal-value">${signal.smcAnalysis.mmPhase}</span>
+                        </div>
+                        <div class="signal-item" style="border: none; padding: 5px 0;">
+                            <span class="signal-label">Order Blocks</span>
+                            <span class="signal-value">${signal.smcAnalysis.orderBlocks}</span>
+                        </div>
+                        <div class="signal-item" style="border: none; padding: 5px 0;">
+                            <span class="signal-label">Fair Value Gaps</span>
+                            <span class="signal-value">${signal.smcAnalysis.fvg}</span>
+                        </div>
+                        <div class="signal-item" style="border: none; padding: 5px 0;">
+                            <span class="signal-label">Structure</span>
+                            <span class="signal-value" style="font-size: 0.85em;">${signal.smcAnalysis.structure || 'None'}</span>
+                        </div>
+                    </div>
+                `;
+            }
             
             document.getElementById('signalOutput').innerHTML = `
                 <div class="signal-item">
-                    <span class="signal-label">Index</span>
-                    <span class="signal-value">${signal.index}</span>
+                    <span class="signal-label">Asset</span>
+                    <span class="signal-value">${signal.index}${isGold ? ' (GOLD)' : ''}</span>
                 </div>
                 <div class="signal-item">
                     <span class="signal-label">Current Price</span>
@@ -832,6 +1792,7 @@
                     <span class="signal-label">Direction</span>
                     <span class="signal-value ${signal.direction.toLowerCase()}">${signal.direction}</span>
                 </div>
+                ${smcSection}
                 <div class="signal-item">
                     <span class="signal-label">Entry</span>
                     <span class="signal-value">${signal.entry}</span>
@@ -859,7 +1820,7 @@
                     <span class="signal-value">${signal.expectedPips}</span>
                 </div>
                 <div class="signal-item">
-                    <span class="signal-label">Market Sentiment</span>
+                    <span class="signal-label">${isGold ? 'Market Sentiment' : 'Market Sentiment'}</span>
                     <span class="signal-value">${signal.bullishCompanies}/${signal.totalCompanies} Bullish</span>
                 </div>
             `;
@@ -868,11 +1829,18 @@
         // Display companies
         function displayCompanies(companies) {
             const html = companies.map(company => `
-                <div class="company-item">
-                    <div class="company-name">${company.name} (${company.symbol})</div>
+                <div class="company-card">
+                    <div class="company-header">
+                        <div class="company-name">${company.name}</div>
+                        <div class="company-symbol">${company.symbol}</div>
+                    </div>
                     <div class="company-data">
-                        <span>Weight: ${company.weight}</span>
-                        <span style="color: ${parseFloat(company.change) >= 0 ? '#00ff88' : '#ff3366'}">
+                        <span class="company-label">Weight:</span>
+                        <span class="company-value">${company.weight}</span>
+                    </div>
+                    <div class="company-data">
+                        <span class="company-label">Change:</span>
+                        <span class="company-value" style="color: ${parseFloat(company.change) >= 0 ? '#00ff88' : '#ff3366'}">
                             ${company.change}
                         </span>
                     </div>
@@ -973,25 +1941,38 @@
         // Initialize app
         window.onload = function() {
             initChart();
-            generateMockChartData();
             loadSignalHistory();
             
-            // Update chart data every 30 seconds
+            // Display initial companies
+            const initialCompanies = getTopCompanies(currentIndex);
+            displayCompanies(initialCompanies);
+            
+            // Update candlestick data every 60 seconds
             setInterval(() => {
                 if (chartData.data.length > 0) {
-                    const lastPrice = parseFloat(chartData.data[chartData.data.length - 1]);
-                    const newPrice = lastPrice + (Math.random() - 0.5) * (lastPrice * 0.001);
-                    
-                    chartData.labels.shift();
-                    chartData.data.shift();
-                    
+                    const lastCandle = chartData.data[chartData.data.length - 1];
                     const now = new Date();
-                    chartData.labels.push(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-                    chartData.data.push(newPrice.toFixed(2));
                     
-                    chart.update();
+                    // Create new candle
+                    const open = lastCandle.c;
+                    const volatility = open * 0.002;
+                    const close = open + (Math.random() - 0.5) * volatility * 4;
+                    const high = Math.max(open, close) + Math.random() * volatility;
+                    const low = Math.min(open, close) - Math.random() * volatility;
+                    
+                    chartData.data.shift();
+                    chartData.data.push({
+                        x: now.getTime(),
+                        o: parseFloat(open.toFixed(2)),
+                        h: parseFloat(high.toFixed(2)),
+                        l: parseFloat(low.toFixed(2)),
+                        c: parseFloat(close.toFixed(2))
+                    });
+                    
+                    chart.data.datasets[0].data = chartData.data;
+                    chart.update('none'); // Update without animation for smooth updates
                 }
-            }, 30000);
+            }, 60000); // Update every minute
         };
     </script>
 </body>
