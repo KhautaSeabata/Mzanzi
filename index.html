@@ -2,987 +2,325 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MzanziFX Trading Signals</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trading Terminal - Real-Time Charts</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        :root {
-            --bg: #0a0e1a;
-            --surface: #131a2e;
-            --border: #1e2d4a;
-            --accent: #00ff88;
-            --danger: #ff3366;
-            --warning: #ffaa00;
-            --text: #e0e6f0;
-            --muted: #7a8aa5;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            font-family: 'Roboto', sans-serif;
+            background: #0e0e0e;
+            color: #ffffff;
             overflow: hidden;
+            height: 100vh;
         }
 
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: rgba(19, 26, 46, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border);
+        /* Header */
+        .header {
+            background: #1a1a1a;
+            padding: 10px 15px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
-            z-index: 1000;
+            align-items: center;
+            border-bottom: 1px solid #2a2a2a;
         }
 
-        .logo {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.2em;
-            font-weight: 700;
-            color: var(--accent);
-            letter-spacing: 2px;
-        }
-
-        .nav-tabs {
-            display: flex;
-            gap: 5px;
-        }
-
-        .nav-tab {
-            padding: 8px 16px;
-            background: transparent;
-            border: none;
-            color: var(--muted);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85em;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.3s;
-        }
-
-        .nav-tab:hover { background: var(--surface); color: var(--accent); }
-        .nav-tab.active { background: var(--accent); color: var(--bg); }
-
-        .status {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75em;
+        .header-left {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 15px;
         }
 
-        .status-dot {
+        .symbol-selector {
+            background: #252525;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .price-display {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .current-price {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Roboto', monospace;
+            color: #00ff88;
+        }
+
+        .price-change {
+            font-size: 12px;
+            font-family: 'Roboto', monospace;
+        }
+
+        .price-change.positive {
+            color: #00ff88;
+        }
+
+        .price-change.negative {
+            color: #ff3366;
+        }
+
+        .connection-status {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: var(--muted);
-            transition: all 0.3s;
+            background: #00ff88;
+            animation: pulse 2s infinite;
         }
-
-        .status-dot.connected { background: var(--accent); animation: pulse 2s infinite; }
-        .status-dot.connecting { background: var(--warning); animation: pulse 1s infinite; }
-        .status-dot.disconnected { background: var(--danger); }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            50% { opacity: 0.5; }
         }
 
-        .main {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            overflow: hidden;
+        .connection-status.disconnected {
+            background: #ff3366;
         }
 
-        .tab-content {
-            display: none;
-            height: 100%;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .tab-content.active { display: block; }
-
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .index-btns {
+        /* Timeframe Bar */
+        .timeframe-bar {
+            background: #1a1a1a;
+            padding: 8px 15px;
             display: flex;
             gap: 8px;
+            overflow-x: auto;
+            border-bottom: 1px solid #2a2a2a;
         }
 
-        .index-btn {
-            padding: 10px 20px;
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            color: var(--muted);
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            font-size: 0.85em;
+        .timeframe-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tf-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid #333;
+            color: #888;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            white-space: nowrap;
+            transition: all 0.2s;
         }
 
-        .index-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .index-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+        .tf-btn.active {
+            background: #00ff88;
+            color: #0e0e0e;
+            border-color: #00ff88;
+        }
 
-        .chart-wrapper {
-            height: calc(100vh - 160px);
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 15px;
+        .tf-btn:hover {
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            height: calc(100vh - 120px);
+            background: #0e0e0e;
             position: relative;
         }
 
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Controls Overlay */
+        .chart-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #888;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .control-btn.active {
+            background: #00ff88;
+            color: #0e0e0e;
+            border-color: #00ff88;
+        }
+
+        /* Info Box */
+        .info-box {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(26, 26, 26, 0.95);
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            font-size: 11px;
+            display: none;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .info-box.visible {
+            display: block;
+        }
+
+        .info-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            color: #888;
+            min-width: 20px;
+        }
+
+        .info-value {
+            color: #fff;
+            font-weight: 600;
+            font-family: 'Roboto', monospace;
+        }
+
+        /* Loading */
         .loading-overlay {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 14, 26, 0.9);
+            background: rgba(14, 14, 14, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
-            z-index: 10;
+            z-index: 1000;
         }
 
-        .loading-overlay.hidden { display: none; }
+        .loading-overlay.hidden {
+            display: none;
+        }
 
         .spinner {
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
             width: 40px;
             height: 40px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 15px;
+            border: 3px solid #333;
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
         .loading-text {
-            color: var(--accent);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9em;
-        }
-
-        #chart { width: 100%; height: 100%; }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            height: calc(100vh - 100px);
-        }
-
-        .panel {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .panel-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.1em;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .signal-box {
-            background: var(--bg);
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-
-        .signal-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .signal-row:last-child { border-bottom: none; }
-
-        .signal-label {
-            color: var(--muted);
-            font-size: 0.85em;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .signal-value {
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .signal-value.buy { color: var(--accent); }
-        .signal-value.sell { color: var(--danger); }
-
-        .btn-gen {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, var(--accent), #00cc6a);
-            border: none;
-            border-radius: 8px;
-            color: var(--bg);
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            font-size: 1em;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-
-        .btn-gen:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 255, 136, 0.3); }
-        .btn-gen:disabled { background: var(--border); cursor: not-allowed; }
-
-        .history-item {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            position: relative;
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-
-        .history-index {
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .history-time {
-            font-size: 0.8em;
-            color: var(--muted);
-        }
-
-        .btn-del {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            padding: 4px 8px;
-            background: var(--danger);
-            border: none;
-            border-radius: 4px;
-            color: white;
-            font-size: 0.7em;
-            cursor: pointer;
-        }
-
-        .btn-del:hover { background: #ff1144; }
-
-        .companies-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
-        }
-
-        .company-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 15px;
-            transition: all 0.3s;
-        }
-
-        .company-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-
-        .company-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .company-name {
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .company-symbol {
-            background: var(--bg);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .company-data {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            font-size: 0.9em;
-        }
-
-        .smc-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .smc-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .smc-card-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 15px;
-            font-size: 1.1em;
-        }
-
-        @media (max-width: 768px) {
-            .grid { grid-template-columns: 1fr; }
-            .index-btns { width: 100%; }
-            .index-btn { flex: 1; padding: 8px; font-size: 0.75em; }
+            margin-top: 16px;
+            color: #888;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="navbar">
-        <div class="logo">⚡ MZANZIFX</div>
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('chart-tab')">CHART</button>
-            <button class="nav-tab" onclick="switchTab('signals-tab')">SIGNALS</button>
-            <button class="nav-tab" onclick="switchTab('companies-tab')">COMPANIES</button>
-            <button class="nav-tab" onclick="switchTab('smc-tab')">SMC</button>
-        </div>
-        <div class="status">
-            <div class="status-dot" id="statusDot"></div>
-            <span id="status">CONNECTING...</span>
-        </div>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading chart data...</div>
     </div>
 
-    <div class="main">
-        <div id="chart-tab" class="tab-content active">
-            <div class="controls">
-                <div class="index-btns">
-                    <button class="index-btn active" onclick="selectIndex('US100')">US100</button>
-                    <button class="index-btn" onclick="selectIndex('US30')">US30</button>
-                    <button class="index-btn" onclick="selectIndex('GER40')">GER40</button>
-                    <button class="index-btn" onclick="selectIndex('XAUUSD')">GOLD</button>
-                </div>
-                <div style="color: var(--muted); font-family: 'JetBrains Mono'; font-size: 0.85em;">
-                    <span id="idx">US100</span> | <span id="price">--</span>
-                </div>
-            </div>
-            <div class="chart-wrapper">
-                <div class="loading-overlay" id="loadingOverlay">
-                    <div class="spinner"></div>
-                    <div class="loading-text">Loading market data...</div>
-                </div>
-                <canvas id="chart"></canvas>
+    <div class="header">
+        <div class="header-left">
+            <select class="symbol-selector" id="symbolSelector" onchange="changeSymbol()">
+                <option value="US30">US30 - Dow Jones</option>
+                <option value="US100">US100 - NASDAQ 100</option>
+                <option value="GER40">GER40 - Germany 40</option>
+                <option value="XAUUSD">XAUUSD - Gold</option>
+            </select>
+            
+            <div class="price-display">
+                <div class="current-price" id="currentPrice">--</div>
+                <div class="price-change" id="priceChange">--</div>
             </div>
         </div>
+        
+        <div class="connection-status" id="connectionStatus"></div>
+    </div>
 
-        <div id="signals-tab" class="tab-content">
-            <div class="grid">
-                <div class="panel">
-                    <div class="panel-title">📜 SIGNAL HISTORY</div>
-                    <div id="history">
-                        <p style="text-align: center; color: var(--muted); padding: 20px;">No signals yet</p>
-                    </div>
-                </div>
-                <div class="panel">
-                    <div class="panel-title">⚡ GENERATE SIGNAL</div>
-                    <div id="signal">
-                        <p style="text-align: center; color: var(--muted); padding: 40px 20px;">
-                            Click "Generate Signal" to create a trading signal
-                        </p>
-                    </div>
-                    <button class="btn-gen" onclick="generateSignal()">🎯 GENERATE SIGNAL</button>
-                </div>
-            </div>
+    <div class="timeframe-bar">
+        <button class="tf-btn" onclick="changeTimeframe(60)">M1</button>
+        <button class="tf-btn active" onclick="changeTimeframe(300)">M5</button>
+        <button class="tf-btn" onclick="changeTimeframe(900)">M15</button>
+        <button class="tf-btn" onclick="changeTimeframe(1800)">M30</button>
+        <button class="tf-btn" onclick="changeTimeframe(3600)">H1</button>
+        <button class="tf-btn" onclick="changeTimeframe(14400)">H4</button>
+        <button class="tf-btn" onclick="changeTimeframe(86400)">D1</button>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="chartCanvas"></canvas>
+        
+        <div class="chart-controls">
+            <div class="control-btn" onclick="zoomIn()" title="Zoom In">+</div>
+            <div class="control-btn" onclick="zoomOut()" title="Zoom Out">−</div>
+            <div class="control-btn" id="crosshairBtn" onclick="toggleCrosshair()" title="Crosshair">✛</div>
+            <div class="control-btn" onclick="resetView()" title="Reset View">⊡</div>
         </div>
 
-        <div id="companies-tab" class="tab-content">
-            <div style="margin-bottom: 20px;">
-                <h2 style="color: var(--accent); font-size: 1.5em; margin-bottom: 5px;">
-                    TOP COMPANIES - <span id="comp-idx">US100</span>
-                </h2>
-                <p style="color: var(--muted); font-size: 0.9em;">Key factors affecting the index</p>
+        <div class="info-box" id="infoBox">
+            <div class="info-row">
+                <span class="info-label">O:</span>
+                <span class="info-value" id="infoOpen">--</span>
+                <span class="info-label">H:</span>
+                <span class="info-value" id="infoHigh">--</span>
             </div>
-            <div class="companies-grid" id="companies"></div>
-        </div>
-
-        <div id="smc-tab" class="tab-content">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="font-size: 2em; font-weight: 700; color: var(--accent); margin-bottom: 10px;">
-                    🧠 SMART MONEY CONCEPTS
-                </h1>
-                <p style="color: var(--muted); font-size: 1.1em;">ICT Analysis for XAUUSD (Gold)</p>
-            </div>
-            <div class="smc-grid" id="smc">
-                <p style="text-align: center; color: var(--muted); padding: 40px; grid-column: 1/-1;">
-                    Generate a GOLD signal to see SMC analysis
-                </p>
+            <div class="info-row">
+                <span class="info-label">L:</span>
+                <span class="info-value" id="infoLow">--</span>
+                <span class="info-label">C:</span>
+                <span class="info-value" id="infoClose">--</span>
             </div>
         </div>
     </div>
 
-    <script src="smc.js"></script>
-    <script>
-        // Firebase configuration
-        const firebaseConfig = { databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com" };
-        let database;
-        
-        try {
-            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-            database = firebase.database();
-        } catch (error) {
-            console.error('Firebase error:', error);
-        }
-
-        let currentIndex = 'US100';
-        let chartInstance;
-        let priceHistory = {};
-        let wsConnection = null;
-
-        const companiesData = {
-            'US100': [
-                { name: 'Apple', symbol: 'AAPL', change: '+1.2%', weight: '12.5%' },
-                { name: 'Microsoft', symbol: 'MSFT', change: '+0.8%', weight: '11.8%' },
-                { name: 'Amazon', symbol: 'AMZN', change: '-0.3%', weight: '7.2%' },
-                { name: 'NVIDIA', symbol: 'NVDA', change: '+2.1%', weight: '6.9%' },
-                { name: 'Alphabet', symbol: 'GOOGL', change: '+0.5%', weight: '6.1%' },
-                { name: 'Meta', symbol: 'META', change: '+1.5%', weight: '4.8%' },
-                { name: 'Tesla', symbol: 'TSLA', change: '-1.2%', weight: '4.3%' },
-                { name: 'Broadcom', symbol: 'AVGO', change: '+0.9%', weight: '3.7%' },
-                { name: 'Costco', symbol: 'COST', change: '+0.4%', weight: '2.9%' },
-                { name: 'Netflix', symbol: 'NFLX', change: '+1.1%', weight: '2.5%' }
-            ],
-            'US30': [
-                { name: 'UnitedHealth', symbol: 'UNH', change: '+0.7%', weight: '9.2%' },
-                { name: 'Goldman Sachs', symbol: 'GS', change: '+1.1%', weight: '7.8%' },
-                { name: 'Microsoft', symbol: 'MSFT', change: '+0.8%', weight: '7.5%' },
-                { name: 'Home Depot', symbol: 'HD', change: '-0.2%', weight: '6.9%' },
-                { name: 'Salesforce', symbol: 'CRM', change: '+1.3%', weight: '6.1%' },
-                { name: 'Visa', symbol: 'V', change: '+0.5%', weight: '5.8%' },
-                { name: 'McDonald\'s', symbol: 'MCD', change: '+0.3%', weight: '5.2%' },
-                { name: 'Boeing', symbol: 'BA', change: '-0.8%', weight: '4.7%' },
-                { name: 'Caterpillar', symbol: 'CAT', change: '+0.9%', weight: '4.3%' },
-                { name: 'Apple', symbol: 'AAPL', change: '+1.2%', weight: '4.1%' }
-            ],
-            'GER40': [
-                { name: 'SAP', symbol: 'SAP', change: '+0.9%', weight: '11.2%' },
-                { name: 'Siemens', symbol: 'SIE', change: '+1.1%', weight: '9.8%' },
-                { name: 'Allianz', symbol: 'ALV', change: '+0.4%', weight: '7.9%' },
-                { name: 'Airbus', symbol: 'AIR', change: '-0.5%', weight: '6.7%' },
-                { name: 'BASF', symbol: 'BAS', change: '+0.6%', weight: '5.9%' },
-                { name: 'Volkswagen', symbol: 'VOW3', change: '-0.3%', weight: '5.4%' },
-                { name: 'Deutsche Telekom', symbol: 'DTE', change: '+0.7%', weight: '5.1%' },
-                { name: 'BMW', symbol: 'BMW', change: '+0.2%', weight: '4.8%' },
-                { name: 'Bayer', symbol: 'BAYN', change: '-0.8%', weight: '4.3%' },
-                { name: 'Deutsche Bank', symbol: 'DBK', change: '+1.2%', weight: '3.9%' }
-            ],
-            'XAUUSD': [
-                { name: 'US Dollar Index', symbol: 'DXY', change: '-0.3%', weight: '45%' },
-                { name: 'US 10Y Treasury', symbol: 'US10Y', change: '+0.2%', weight: '25%' },
-                { name: 'Federal Reserve', symbol: 'FED', change: '0.0%', weight: '20%' },
-                { name: 'EUR/USD', symbol: 'EURUSD', change: '+0.4%', weight: '15%' },
-                { name: 'Oil (WTI)', symbol: 'CL', change: '+1.1%', weight: '12%' },
-                { name: 'S&P 500', symbol: 'SPX', change: '+0.6%', weight: '10%' },
-                { name: 'VIX', symbol: 'VIX', change: '-2.3%', weight: '8%' },
-                { name: 'Silver', symbol: 'XAGUSD', change: '+0.9%', weight: '8%' },
-                { name: 'Bitcoin', symbol: 'BTC', change: '+1.8%', weight: '5%' },
-                { name: 'CPI', symbol: 'CPI', change: '+0.1%', weight: '5%' }
-            ]
-        };
-
-        // Finnhub WebSocket for real-time data
-        const FINNHUB_KEY = 'ctbo1r9r01ql85pcbbcgctbo1r9r01ql85pcbbd0';
-        
-        const symbolMapping = {
-            'US100': 'OANDA:NAS100_USD',
-            'US30': 'OANDA:US30_USD', 
-            'GER40': 'OANDA:DE30_EUR',
-            'XAUUSD': 'OANDA:XAU_USD'
-        };
-
-        function updateStatus(status) {
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('status');
-            
-            statusDot.className = 'status-dot ' + status;
-            
-            switch(status) {
-                case 'connected':
-                    statusText.textContent = 'ONLINE';
-                    statusText.style.color = 'var(--accent)';
-                    break;
-                case 'connecting':
-                    statusText.textContent = 'CONNECTING...';
-                    statusText.style.color = 'var(--warning)';
-                    break;
-                case 'disconnected':
-                    statusText.textContent = 'OFFLINE';
-                    statusText.style.color = 'var(--danger)';
-                    break;
-            }
-        }
-
-        function connectWebSocket() {
-            updateStatus('connecting');
-            
-            wsConnection = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
-            
-            wsConnection.onopen = () => {
-                console.log('✓ Connected to Finnhub');
-                updateStatus('connected');
-                subscribeToSymbol(currentIndex);
-                document.getElementById('loadingOverlay').classList.add('hidden');
-            };
-            
-            wsConnection.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'trade' && data.data) {
-                    data.data.forEach(trade => {
-                        updatePrice(trade.p);
-                        addToHistory(currentIndex, trade.p);
-                    });
-                }
-            };
-            
-            wsConnection.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                updateStatus('disconnected');
-            };
-            
-            wsConnection.onclose = () => {
-                console.log('WebSocket closed');
-                updateStatus('disconnected');
-                setTimeout(() => connectWebSocket(), 5000);
-            };
-        }
-
-        function subscribeToSymbol(index) {
-            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
-                const symbol = symbolMapping[index];
-                wsConnection.send(JSON.stringify({type: 'subscribe', symbol: symbol}));
-                console.log(`Subscribed to ${symbol}`);
-                
-                // Fetch initial historical data
-                fetchHistoricalData(index);
-            }
-        }
-
-        function unsubscribeFromSymbol(index) {
-            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
-                const symbol = symbolMapping[index];
-                wsConnection.send(JSON.stringify({type: 'unsubscribe', symbol: symbol}));
-            }
-        }
-
-        async function fetchHistoricalData(index) {
-            // Generate simulated historical data for now
-            // In production, you'd fetch from an API
-            const bases = { 'US100': 16500, 'US30': 37000, 'GER40': 17000, 'XAUUSD': 2650 };
-            let price = bases[index];
-            const labels = [];
-            const prices = [];
-
-            for (let i = 50; i >= 0; i--) {
-                const date = new Date(Date.now() - i * 3600000);
-                labels.push(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-                price += (Math.random() - 0.5) * (price * 0.003);
-                prices.push(parseFloat(price.toFixed(2)));
-            }
-
-            priceHistory[index] = prices;
-            updateChart(labels, prices);
-            updatePrice(prices[prices.length - 1]);
-        }
-
-        function addToHistory(index, price) {
-            if (!priceHistory[index]) {
-                priceHistory[index] = [];
-            }
-            
-            priceHistory[index].push(price);
-            
-            // Keep only last 100 points
-            if (priceHistory[index].length > 100) {
-                priceHistory[index].shift();
-            }
-            
-            // Update chart
-            const labels = priceHistory[index].map((_, i) => {
-                const date = new Date(Date.now() - (priceHistory[index].length - i) * 60000);
-                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            });
-            
-            updateChart(labels, priceHistory[index]);
-        }
-
-        function initChart() {
-            const ctx = document.getElementById('chart').getContext('2d');
-            
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: currentIndex,
-                        data: [],
-                        borderColor: '#00ff88',
-                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { 
-                            grid: { color: '#1e2d4a' },
-                            ticks: { color: '#7a8aa5', font: { family: 'JetBrains Mono', size: 10 } }
-                        },
-                        y: { 
-                            grid: { color: '#1e2d4a' },
-                            ticks: { color: '#7a8aa5', font: { family: 'JetBrains Mono', size: 10 } }
-                        }
-                    },
-                    animation: false
-                }
-            });
-        }
-
-        function updateChart(labels, prices) {
-            if (!chartInstance) return;
-            
-            chartInstance.data.labels = labels;
-            chartInstance.data.datasets[0].data = prices;
-            chartInstance.data.datasets[0].label = currentIndex;
-            chartInstance.update('none');
-        }
-
-        function updatePrice(price) {
-            const formatted = currentIndex === 'XAUUSD' 
-                ? `$${price.toFixed(2)}`
-                : `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-            document.getElementById('price').textContent = formatted;
-        }
-
-        function selectIndex(index) {
-            unsubscribeFromSymbol(currentIndex);
-            currentIndex = index;
-            
-            document.querySelectorAll('.index-btn').forEach(el => el.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            document.getElementById('idx').textContent = index;
-            document.getElementById('comp-idx').textContent = index;
-            
-            if (!priceHistory[index]) {
-                document.getElementById('loadingOverlay').classList.remove('hidden');
-            }
-            
-            subscribeToSymbol(index);
-            loadCompanies(index);
-            
-            if (priceHistory[index]) {
-                const labels = priceHistory[index].map((_, i) => {
-                    const date = new Date(Date.now() - (priceHistory[index].length - i) * 60000);
-                    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                });
-                updateChart(labels, priceHistory[index]);
-                updatePrice(priceHistory[index][priceHistory[index].length - 1]);
-            }
-        }
-
-        function loadCompanies(index) {
-            const companies = companiesData[index] || [];
-            const html = companies.map(c => `
-                <div class="company-card">
-                    <div class="company-header">
-                        <div class="company-name">${c.name}</div>
-                        <div class="company-symbol">${c.symbol}</div>
-                    </div>
-                    <div class="company-data">
-                        <span style="color: var(--muted)">Weight:</span>
-                        <span>${c.weight}</span>
-                    </div>
-                    <div class="company-data">
-                        <span style="color: var(--muted)">Change:</span>
-                        <span style="color: ${parseFloat(c.change) >= 0 ? 'var(--accent)' : 'var(--danger)'}">
-                            ${c.change}
-                        </span>
-                    </div>
-                </div>
-            `).join('');
-            document.getElementById('companies').innerHTML = html;
-        }
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        function generateSignal() {
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; display: inline-block; margin-right: 10px;"></div> ANALYZING...';
-
-            setTimeout(() => {
-                if (!priceHistory[currentIndex] || priceHistory[currentIndex].length < 10) {
-                    alert('Insufficient market data. Please wait for more data.');
-                    btn.disabled = false;
-                    btn.innerHTML = '🎯 GENERATE SIGNAL';
-                    return;
-                }
-
-                const data = priceHistory[currentIndex];
-                const currentPrice = data[data.length - 1];
-                const companies = companiesData[currentIndex] || [];
-                
-                let direction, entry, tp1, tp2, sl, pips;
-
-                // Use SMC analysis for GOLD
-                if (currentIndex === 'XAUUSD' && typeof analyzeSMC === 'function') {
-                    const candles = data.slice(-50).map((price, i) => ({
-                        open: i > 0 ? data[i - 1] : price,
-                        high: price * 1.002,
-                        low: price * 0.998,
-                        close: price,
-                        time: Date.now() - (50 - i) * 3600000
-                    }));
-
-                    const smc = analyzeSMC(candles);
-                    displaySMC(smc);
-                    
-                    direction = smc.bias === 'BULLISH' ? 'BUY' : smc.bias === 'BEARISH' ? 'SELL' : 'BUY';
-                } else {
-                    // Use company sentiment for indices (datascraper.py logic)
-                    const bullish = companies.filter(c => parseFloat(c.change) > 0).length;
-                    direction = bullish > companies.length / 2 ? 'BUY' : 'SELL';
-                }
-
-                const mult = currentIndex === 'XAUUSD' ? 0.002 : 0.003;
-                const base = currentPrice * mult * 2;
-
-                if (direction === 'BUY') {
-                    entry = currentPrice - (base * 0.15);
-                    tp1 = entry + base;
-                    tp2 = entry + (base * 1.8);
-                    sl = entry - (base * 0.5);
-                    pips = currentIndex === 'XAUUSD' ? Math.round((tp1 - entry) * 100) : Math.round((tp1 - entry) * 10);
-                } else {
-                    entry = currentPrice + (base * 0.15);
-                    tp1 = entry - base;
-                    tp2 = entry - (base * 1.8);
-                    sl = entry + (base * 0.5);
-                    pips = currentIndex === 'XAUUSD' ? Math.round((entry - tp1) * 100) : Math.round((entry - tp1) * 10);
-                }
-
-                const signal = {
-                    index: currentIndex,
-                    timestamp: new Date().toISOString(),
-                    direction,
-                    entry: entry.toFixed(2),
-                    tp1: tp1.toFixed(2),
-                    tp2: tp2.toFixed(2),
-                    sl: sl.toFixed(2),
-                    pips,
-                    currentPrice: currentPrice.toFixed(2)
-                };
-
-                displaySignal(signal);
-                saveSignal(signal);
-
-                btn.disabled = false;
-                btn.innerHTML = '🎯 GENERATE SIGNAL';
-            }, 2000);
-        }
-
-        function displaySignal(signal) {
-            const html = `
-                <div class="signal-box">
-                    <div class="signal-row">
-                        <span class="signal-label">ASSET</span>
-                        <span class="signal-value">${signal.index}</span>
-                    </div>
-                    <div class="signal-row">
-                        <span class="signal-label">PRICE</span>
-                        <span class="signal-value">${signal.currentPrice}</span>
-                    </div>
-                    <div class="signal-row">
-                        <span class="signal-label">DIRECTION</span>
-                        <span class="signal-value ${signal.direction.toLowerCase()}">${signal.direction}</span>
-                    </div>
-                    <div class="signal-row">
-                        <span class="signal-label">ENTRY</span>
-                        <span class="signal-value">${signal.entry}</span>
-                    </div>
-                    <div class="signal-row">
-                        <span class="signal-label">TP1</span>
-                        <span class="signal-value">${signal.tp1}</span>
-                    </div>
-                    <div class="signal-row">
-                        <span class="signal-label">TP2</span>
-                        <span class="signal-value">${signal.tp2}</span>
-                    </div>
-                    <div class="signal-row">
-                        <span class="signal-label">SL</span>
-                        <span class="signal-value">${signal.sl}</span>
-                    </div>
-                    <div class="signal-row">
-                        <span class="signal-label">PIPS</span>
-                        <span class="signal-value">${signal.pips}</span>
-                    </div>
-                </div>
-            `;
-            document.getElementById('signal').innerHTML = html;
-        }
-
-        function displaySMC(smc) {
-            const html = `
-                <div class="smc-card">
-                    <div class="smc-card-title">📊 MARKET BIAS</div>
-                    <div style="font-size: 2em; font-weight: 700; color: ${smc.bias === 'BULLISH' ? 'var(--accent)' : smc.bias === 'BEARISH' ? 'var(--danger)' : 'var(--muted)'}; padding: 20px 0;">
-                        ${smc.bias}
-                    </div>
-                </div>
-                <div class="smc-card">
-                    <div class="smc-card-title">🎯 MM PHASE</div>
-                    <div style="font-size: 1.5em; font-weight: 700; color: var(--accent); padding: 20px 0;">
-                        ${smc.phase}
-                    </div>
-                </div>
-                <div class="smc-card">
-                    <div class="smc-card-title">📈 BULLISH SCORE</div>
-                    <div style="font-size: 2em; font-weight: 700; color: var(--accent); padding: 20px 0;">
-                        ${smc.bullishScore}
-                    </div>
-                </div>
-                <div class="smc-card">
-                    <div class="smc-card-title">📉 BEARISH SCORE</div>
-                    <div style="font-size: 2em; font-weight: 700; color: var(--danger); padding: 20px 0;">
-                        ${smc.bearishScore}
-                    </div>
-                </div>
-                <div class="smc-card">
-                    <div class="smc-card-title">🔄 ORDER BLOCKS</div>
-                    <div style="font-size: 1.5em; font-weight: 700; color: var(--text); padding: 20px 0;">
-                        ${smc.orderBlocks || 0}
-                    </div>
-                </div>
-                <div class="smc-card">
-                    <div class="smc-card-title">⚡ FAIR VALUE GAPS</div>
-                    <div style="font-size: 1.5em; font-weight: 700; color: var(--text); padding: 20px 0;">
-                        ${smc.fvg || 0}
-                    </div>
-                </div>
-            `;
-            document.getElementById('smc').innerHTML = html;
-        }
-
-        function saveSignal(signal) {
-            try {
-                database.ref('signals').push(signal);
-                loadHistory();
-            } catch (error) {
-                console.error('Error saving:', error);
-            }
-        }
-
-        function loadHistory() {
-            try {
-                database.ref('signals').orderByChild('timestamp').limitToLast(10).once('value').then(snapshot => {
-                    const signals = [];
-                    snapshot.forEach(child => {
-                        signals.push({ id: child.key, ...child.val() });
-                    });
-                    
-                    signals.reverse();
-                    
-                    if (signals.length === 0) {
-                        document.getElementById('history').innerHTML = 
-                            '<p style="text-align: center; color: var(--muted); padding: 20px;">No signals yet</p>';
-                        return;
-                    }
-                    
-                    const html = signals.map(s => `
-                        <div class="history-item">
-                            <button class="btn-del" onclick="deleteSignal('${s.id}')">DEL</button>
-                            <div class="history-header">
-                                <span class="history-index">${s.index}</span>
-                                <span class="history-time">${new Date(s.timestamp).toLocaleString()}</span>
-                            </div>
-                            <div style="font-size: 0.9em; color: var(--muted);">
-                                ${s.direction} | Entry: ${s.entry} | TP1: ${s.tp1} | SL: ${s.sl}
-                            </div>
-                        </div>
-                    `).join('');
-                    
-                    document.getElementById('history').innerHTML = html;
-                });
-            } catch (error) {
-                console.error('Error loading:', error);
-            }
-        }
-
-        function deleteSignal(id) {
-            if (confirm('Delete this signal?')) {
-                database.ref(`signals/${id}`).remove().then(() => {
-                    loadHistory();
-                }).catch(err => {
-                    console.error('Delete error:', err);
-                    alert('Failed to delete signal');
-                });
-            }
-        }
-
-        window.addEventListener('load', () => {
-            initChart();
-            loadCompanies('US100');
-            loadHistory();
-            connectWebSocket();
-        });
-    </script>
+    <script src="data.js"></script>
 </body>
 </html>
