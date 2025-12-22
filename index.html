@@ -3,23 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MzanziFX - Trading Signal Generator</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
-    
-    <!-- TradingView Lightweight Charts -->
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    
-    <!-- Firebase -->
+    <title>MzanziFX Trading Signals</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    
+    <script src="smc.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         :root {
             --bg: #0a0e1a;
             --surface: #131a2e;
@@ -35,10 +27,9 @@
             background: var(--bg);
             color: var(--text);
             overflow: hidden;
-            height: 100vh;
         }
 
-        .nav-bar {
+        .navbar {
             position: fixed;
             top: 0;
             left: 0;
@@ -79,15 +70,8 @@
             transition: all 0.3s;
         }
 
-        .nav-tab:hover {
-            background: var(--surface);
-            color: var(--accent);
-        }
-
-        .nav-tab.active {
-            background: var(--accent);
-            color: var(--bg);
-        }
+        .nav-tab:hover { background: var(--surface); color: var(--accent); }
+        .nav-tab.active { background: var(--accent); color: var(--bg); }
 
         .status {
             font-family: 'JetBrains Mono', monospace;
@@ -111,7 +95,7 @@
             50% { opacity: 0.3; }
         }
 
-        .main-container {
+        .main {
             position: fixed;
             top: 60px;
             left: 0;
@@ -127,11 +111,9 @@
             overflow-y: auto;
         }
 
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content.active { display: block; }
 
-        .chart-controls {
+        .controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -140,7 +122,7 @@
             gap: 10px;
         }
 
-        .index-buttons {
+        .index-btns {
             display: flex;
             gap: 8px;
         }
@@ -158,16 +140,8 @@
             transition: all 0.3s;
         }
 
-        .index-btn:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .index-btn.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: var(--bg);
-        }
+        .index-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .index-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
 
         .chart-wrapper {
             height: calc(100vh - 160px);
@@ -177,12 +151,9 @@
             padding: 15px;
         }
 
-        #tradingview_chart {
-            width: 100%;
-            height: 100%;
-        }
+        #chart { width: 100%; height: 100%; }
 
-        .signals-grid {
+        .grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 20px;
@@ -222,9 +193,7 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .signal-row:last-child {
-            border-bottom: none;
-        }
+        .signal-row:last-child { border-bottom: none; }
 
         .signal-label {
             color: var(--muted);
@@ -237,15 +206,10 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        .signal-value.buy {
-            color: var(--accent);
-        }
+        .signal-value.buy { color: var(--accent); }
+        .signal-value.sell { color: var(--danger); }
 
-        .signal-value.sell {
-            color: var(--danger);
-        }
-
-        .btn-generate {
+        .btn-gen {
             width: 100%;
             padding: 15px;
             background: linear-gradient(135deg, var(--accent), #00cc6a);
@@ -257,18 +221,10 @@
             font-size: 1em;
             cursor: pointer;
             margin-top: 15px;
-            transition: all 0.3s;
         }
 
-        .btn-generate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 255, 136, 0.3);
-        }
-
-        .btn-generate:disabled {
-            background: var(--border);
-            cursor: not-allowed;
-        }
+        .btn-gen:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 255, 136, 0.3); }
+        .btn-gen:disabled { background: var(--border); cursor: not-allowed; }
 
         .history-item {
             background: var(--bg);
@@ -295,7 +251,7 @@
             color: var(--muted);
         }
 
-        .btn-delete {
+        .btn-del {
             position: absolute;
             top: 8px;
             right: 8px;
@@ -308,11 +264,12 @@
             cursor: pointer;
         }
 
+        .btn-del:hover { background: #ff1144; }
+
         .companies-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 15px;
-            padding-bottom: 20px;
         }
 
         .company-card {
@@ -323,10 +280,7 @@
             transition: all 0.3s;
         }
 
-        .company-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-2px);
-        }
+        .company-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
         .company-header {
             display: flex;
@@ -355,32 +309,12 @@
             font-size: 0.9em;
         }
 
-        .smc-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .smc-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .smc-title {
-            font-size: 2em;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 10px;
-        }
-
-        .smc-subtitle {
-            color: var(--muted);
-            font-size: 1.1em;
-        }
-
         .smc-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .smc-card {
@@ -398,152 +332,110 @@
             font-size: 1.1em;
         }
 
-        .smc-item {
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .smc-item:last-child {
-            border-bottom: none;
-        }
-
         .spinner {
             border: 3px solid var(--border);
             border-top-color: var(--accent);
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 20px;
+            height: 20px;
             animation: spin 1s linear infinite;
             display: inline-block;
             margin-right: 10px;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 768px) {
-            .signals-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .index-buttons {
-                width: 100%;
-            }
-            
-            .index-btn {
-                flex: 1;
-                padding: 8px 12px;
-                font-size: 0.75em;
-            }
-        }
-
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent);
+            .grid { grid-template-columns: 1fr; }
+            .index-btns { width: 100%; }
+            .index-btn { flex: 1; padding: 8px; font-size: 0.75em; }
         }
     </style>
 </head>
 <body>
-    <div class="nav-bar">
+    <div class="navbar">
         <div class="logo">⚡ MZANZIFX</div>
         <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('chart')">CHART</button>
-            <button class="nav-tab" onclick="switchTab('signals')">SIGNALS</button>
-            <button class="nav-tab" onclick="switchTab('companies')">COMPANIES</button>
-            <button class="nav-tab" onclick="switchTab('smc')">SMC</button>
+            <button class="nav-tab active" onclick="switchTab('chart-tab')">CHART</button>
+            <button class="nav-tab" onclick="switchTab('signals-tab')">SIGNALS</button>
+            <button class="nav-tab" onclick="switchTab('companies-tab')">COMPANIES</button>
+            <button class="nav-tab" onclick="switchTab('smc-tab')">SMC</button>
         </div>
         <div class="status">
             <div class="status-dot"></div>
-            <span id="statusText">ONLINE</span>
+            <span id="status">ONLINE</span>
         </div>
     </div>
 
-    <div class="main-container">
-        <div id="chart" class="tab-content active">
-            <div class="chart-controls">
-                <div class="index-buttons">
+    <div class="main">
+        <div id="chart-tab" class="tab-content active">
+            <div class="controls">
+                <div class="index-btns">
                     <button class="index-btn active" onclick="selectIndex('US100')">US100</button>
                     <button class="index-btn" onclick="selectIndex('US30')">US30</button>
                     <button class="index-btn" onclick="selectIndex('GER40')">GER40</button>
                     <button class="index-btn" onclick="selectIndex('XAUUSD')">GOLD</button>
                 </div>
                 <div style="color: var(--muted); font-family: 'JetBrains Mono'; font-size: 0.85em;">
-                    <span id="currentIndex">US100</span> | <span id="currentPrice">Loading...</span>
+                    <span id="idx">US100</span> | <span id="price">$16,500.00</span>
                 </div>
             </div>
             <div class="chart-wrapper">
-                <div id="tradingview_chart"></div>
+                <canvas id="chart"></canvas>
             </div>
         </div>
 
-        <div id="signals" class="tab-content">
-            <div class="signals-grid">
+        <div id="signals-tab" class="tab-content">
+            <div class="grid">
                 <div class="panel">
                     <div class="panel-title">📜 SIGNAL HISTORY</div>
-                    <div id="historyContainer">
+                    <div id="history">
                         <p style="text-align: center; color: var(--muted); padding: 20px;">No signals yet</p>
                     </div>
                 </div>
                 <div class="panel">
-                    <div class="panel-title">⚡ CURRENT SIGNAL</div>
-                    <div id="signalOutput">
+                    <div class="panel-title">⚡ GENERATE SIGNAL</div>
+                    <div id="signal">
                         <p style="text-align: center; color: var(--muted); padding: 40px 20px;">
-                            Click "Generate Signal" to create a new trading signal
+                            Click "Generate Signal" to create a trading signal
                         </p>
                     </div>
-                    <button class="btn-generate" onclick="generateSignal()">🎯 GENERATE SIGNAL</button>
+                    <button class="btn-gen" onclick="generateSignal()">🎯 GENERATE SIGNAL</button>
                 </div>
             </div>
         </div>
 
-        <div id="companies" class="tab-content">
+        <div id="companies-tab" class="tab-content">
             <div style="margin-bottom: 20px;">
                 <h2 style="color: var(--accent); font-size: 1.5em; margin-bottom: 5px;">
-                    TOP COMPANIES - <span id="companiesIndexName">US100</span>
+                    TOP COMPANIES - <span id="comp-idx">US100</span>
                 </h2>
-                <p style="color: var(--muted); font-size: 0.9em;">Key assets affecting the index movement</p>
+                <p style="color: var(--muted); font-size: 0.9em;">Key factors affecting the index</p>
             </div>
-            <div class="companies-grid" id="companiesContainer"></div>
+            <div class="companies-grid" id="companies"></div>
         </div>
 
-        <div id="smc" class="tab-content">
-            <div class="smc-container">
-                <div class="smc-header">
-                    <h1 class="smc-title">🧠 SMART MONEY CONCEPTS</h1>
-                    <p class="smc-subtitle">Advanced ICT Analysis for XAUUSD (Gold)</p>
-                </div>
-                <div class="smc-grid" id="smcContainer">
-                    <p style="text-align: center; color: var(--muted); padding: 40px;">
-                        Generate a GOLD signal to see SMC analysis
-                    </p>
-                </div>
+        <div id="smc-tab" class="tab-content">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 2em; font-weight: 700; color: var(--accent); margin-bottom: 10px;">
+                    🧠 SMART MONEY CONCEPTS
+                </h1>
+                <p style="color: var(--muted); font-size: 1.1em;">ICT Analysis for XAUUSD (Gold)</p>
+            </div>
+            <div class="smc-grid" id="smc">
+                <p style="text-align: center; color: var(--muted); padding: 40px; grid-column: 1/-1;">
+                    Generate a GOLD signal to see SMC analysis
+                </p>
             </div>
         </div>
     </div>
 
     <script>
-        const firebaseConfig = {
-            databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com"
-        };
-
+        const firebaseConfig = { databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com" };
         let database;
+        
         try {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             database = firebase.database();
         } catch (error) {
             console.error('Firebase error:', error);
@@ -558,130 +450,7 @@
         }
 
         let currentIndex = 'US100';
-        let chart = null;
-        let lastSMCAnalysis = null;
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.nav-tab').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        function initChart() {
-            const container = document.getElementById('tradingview_chart');
-            chart = LightweightCharts.createChart(container, {
-                width: container.clientWidth,
-                height: container.clientHeight,
-                layout: {
-                    background: { color: '#0a0e1a' },
-                    textColor: '#7a8aa5',
-                },
-                grid: {
-                    vertLines: { color: '#1e2d4a' },
-                    horzLines: { color: '#1e2d4a' },
-                },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Normal,
-                },
-                rightPriceScale: {
-                    borderColor: '#1e2d4a',
-                },
-                timeScale: {
-                    borderColor: '#1e2d4a',
-                    timeVisible: true,
-                    secondsVisible: false,
-                },
-            });
-
-            const candlestickSeries = chart.addCandlestickSeries({
-                upColor: '#00ff88',
-                downColor: '#ff3366',
-                borderDownColor: '#ff3366',
-                borderUpColor: '#00ff88',
-                wickDownColor: '#ff3366',
-                wickUpColor: '#00ff88',
-            });
-
-            const data = generateChartData(currentIndex);
-            candlestickSeries.setData(data);
-            
-            window.candlestickSeries = candlestickSeries;
-
-            window.addEventListener('resize', () => {
-                chart.applyOptions({ 
-                    width: container.clientWidth,
-                    height: container.clientHeight 
-                });
-            });
-
-            updatePriceDisplay(data);
-        }
-
-        function generateChartData(index) {
-            const basePrices = {
-                'US100': 16500,
-                'US30': 37000,
-                'GER40': 17000,
-                'XAUUSD': 2650
-            };
-
-            let price = basePrices[index];
-            const data = [];
-            const now = Math.floor(Date.now() / 1000);
-
-            for (let i = 100; i >= 0; i--) {
-                const time = now - (i * 3600);
-                const open = price;
-                const volatility = price * 0.003;
-                
-                const close = open + (Math.random() - 0.5) * volatility * 3;
-                const high = Math.max(open, close) + Math.random() * volatility;
-                const low = Math.min(open, close) - Math.random() * volatility;
-
-                data.push({
-                    time: time,
-                    open: parseFloat(open.toFixed(2)),
-                    high: parseFloat(high.toFixed(2)),
-                    low: parseFloat(low.toFixed(2)),
-                    close: parseFloat(close.toFixed(2))
-                });
-
-                price = close;
-            }
-
-            return data;
-        }
-
-        function updatePriceDisplay(data) {
-            if (data && data.length > 0) {
-                const lastCandle = data[data.length - 1];
-                document.getElementById('currentPrice').textContent = 
-                    `$${lastCandle.close.toFixed(2)}`;
-            }
-        }
-
-        function selectIndex(index) {
-            currentIndex = index;
-            
-            document.querySelectorAll('.index-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            document.getElementById('currentIndex').textContent = index;
-            document.getElementById('companiesIndexName').textContent = index;
-
-            const data = generateChartData(index);
-            window.candlestickSeries.setData(data);
-            updatePriceDisplay(data);
-
-            loadCompanies(index);
-        }
+        let chart, chartInstance;
 
         const companiesData = {
             'US100': [
@@ -734,6 +503,90 @@
             ]
         };
 
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            const data = generateData(currentIndex);
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: currentIndex,
+                        data: data.prices,
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { 
+                            grid: { color: '#1e2d4a' },
+                            ticks: { color: '#7a8aa5', font: { family: 'JetBrains Mono', size: 10 } }
+                        },
+                        y: { 
+                            grid: { color: '#1e2d4a' },
+                            ticks: { color: '#7a8aa5', font: { family: 'JetBrains Mono', size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            updatePrice(data.prices[data.prices.length - 1]);
+        }
+
+        function generateData(index) {
+            const bases = { 'US100': 16500, 'US30': 37000, 'GER40': 17000, 'XAUUSD': 2650 };
+            let price = bases[index];
+            const labels = [];
+            const prices = [];
+
+            for (let i = 50; i >= 0; i--) {
+                const date = new Date(Date.now() - i * 3600000);
+                labels.push(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+                price += (Math.random() - 0.5) * (price * 0.003);
+                prices.push(parseFloat(price.toFixed(2)));
+            }
+
+            return { labels, prices };
+        }
+
+        function updatePrice(price) {
+            document.getElementById('price').textContent = `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        }
+
+        function selectIndex(index) {
+            currentIndex = index;
+            
+            document.querySelectorAll('.index-btn').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('idx').textContent = index;
+            document.getElementById('comp-idx').textContent = index;
+
+            const data = generateData(index);
+            chartInstance.data.labels = data.labels;
+            chartInstance.data.datasets[0].data = data.prices;
+            chartInstance.data.datasets[0].label = index;
+            chartInstance.update();
+            
+            updatePrice(data.prices[data.prices.length - 1]);
+            loadCompanies(index);
+        }
+
         function loadCompanies(index) {
             const companies = companiesData[index] || [];
             const html = companies.map(c => `
@@ -754,8 +607,7 @@
                     </div>
                 </div>
             `).join('');
-            
-            document.getElementById('companiesContainer').innerHTML = html;
+            document.getElementById('companies').innerHTML = html;
         }
 
         function generateSignal() {
@@ -764,21 +616,20 @@
             btn.innerHTML = '<span class="spinner"></span> ANALYZING...';
 
             setTimeout(() => {
-                const data = window.candlestickSeries._private__data || [];
-                const lastCandle = data[data.length - 1] || { close: 2650 };
-                const currentPrice = lastCandle.close;
-
+                const data = chartInstance.data.datasets[0].data;
+                const currentPrice = data[data.length - 1];
                 const companies = companiesData[currentIndex] || [];
                 const bullish = companies.filter(c => parseFloat(c.change) > 0).length;
                 
                 let direction = bullish > companies.length / 2 ? 'BUY' : 'SELL';
                 const isGold = currentIndex === 'XAUUSD';
 
-                if (isGold) {
-                    lastSMCAnalysis = analyzeSMC(data);
-                    if (lastSMCAnalysis.bias !== 'NEUTRAL') {
-                        direction = lastSMCAnalysis.bias === 'BULLISH' ? 'BUY' : 'SELL';
+                if (isGold && typeof analyzeSMC === 'function') {
+                    const smc = analyzeSMC(data);
+                    if (smc.bias !== 'NEUTRAL') {
+                        direction = smc.bias === 'BULLISH' ? 'BUY' : 'SELL';
                     }
+                    displaySMC(smc);
                 }
 
                 const mult = isGold ? 0.002 : 0.003;
@@ -814,10 +665,6 @@
                 displaySignal(signal);
                 saveSignal(signal);
 
-                if (isGold && lastSMCAnalysis) {
-                    displaySMC(lastSMCAnalysis);
-                }
-
                 btn.disabled = false;
                 btn.innerHTML = '🎯 GENERATE SIGNAL';
             }, 2000);
@@ -831,7 +678,7 @@
                         <span class="signal-value">${signal.index}</span>
                     </div>
                     <div class="signal-row">
-                        <span class="signal-label">CURRENT PRICE</span>
+                        <span class="signal-label">PRICE</span>
                         <span class="signal-value">${signal.currentPrice}</span>
                     </div>
                     <div class="signal-row">
@@ -855,108 +702,66 @@
                         <span class="signal-value">${signal.sl}</span>
                     </div>
                     <div class="signal-row">
-                        <span class="signal-label">EXPECTED PIPS</span>
+                        <span class="signal-label">PIPS</span>
                         <span class="signal-value">${signal.pips}</span>
                     </div>
                 </div>
             `;
-            document.getElementById('signalOutput').innerHTML = html;
-        }
-
-        function analyzeSMC(data) {
-            const candles = data.slice(-50);
-            let bullishScore = 0;
-            let bearishScore = 0;
-
-            for (let i = 2; i < candles.length - 1; i++) {
-                const curr = candles[i];
-                const next = candles[i + 1];
-                
-                if (curr.close < curr.open && next.close > next.open) {
-                    if ((next.close - next.open) > (curr.open - curr.close) * 1.5) {
-                        bullishScore += 2;
-                    }
-                }
-                
-                if (curr.close > curr.open && next.close < next.open) {
-                    if ((next.open - next.close) > (curr.close - curr.open) * 1.5) {
-                        bearishScore += 2;
-                    }
-                }
-            }
-
-            let lastHigh = 0;
-            let lastLow = Infinity;
-            for (let i = 2; i < candles.length - 2; i++) {
-                const curr = candles[i];
-                if (curr.high > lastHigh) {
-                    bullishScore += 3;
-                    lastHigh = curr.high;
-                }
-                if (curr.low < lastLow) {
-                    bearishScore += 3;
-                    lastLow = curr.low;
-                }
-            }
-
-            const bias = bullishScore > bearishScore ? 'BULLISH' : bearishScore > bullishScore ? 'BEARISH' : 'NEUTRAL';
-            
-            return {
-                bias,
-                bullishScore,
-                bearishScore,
-                phase: Math.random() > 0.5 ? 'ACCUMULATION' : 'DISTRIBUTION'
-            };
+            document.getElementById('signal').innerHTML = html;
         }
 
         function displaySMC(smc) {
             const html = `
                 <div class="smc-card">
                     <div class="smc-card-title">📊 MARKET BIAS</div>
-                    <div class="smc-item">
-                        <div style="font-size: 2em; font-weight: 700; color: ${smc.bias === 'BULLISH' ? 'var(--accent)' : smc.bias === 'BEARISH' ? 'var(--danger)' : 'var(--muted)'}">
-                            ${smc.bias}
-                        </div>
+                    <div style="font-size: 2em; font-weight: 700; color: ${smc.bias === 'BULLISH' ? 'var(--accent)' : smc.bias === 'BEARISH' ? 'var(--danger)' : 'var(--muted)'}; padding: 20px 0;">
+                        ${smc.bias}
                     </div>
                 </div>
                 <div class="smc-card">
-                    <div class="smc-card-title">🎯 MARKET MAKER PHASE</div>
-                    <div class="smc-item">
-                        <div style="font-size: 1.5em; font-weight: 700; color: var(--accent)">
-                            ${smc.phase}
-                        </div>
+                    <div class="smc-card-title">🎯 MM PHASE</div>
+                    <div style="font-size: 1.5em; font-weight: 700; color: var(--accent); padding: 20px 0;">
+                        ${smc.phase}
                     </div>
                 </div>
                 <div class="smc-card">
                     <div class="smc-card-title">📈 BULLISH SCORE</div>
-                    <div class="smc-item">
-                        <div style="font-size: 2em; font-weight: 700; color: var(--accent)">
-                            ${smc.bullishScore}
-                        </div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--accent); padding: 20px 0;">
+                        ${smc.bullishScore}
                     </div>
                 </div>
                 <div class="smc-card">
                     <div class="smc-card-title">📉 BEARISH SCORE</div>
-                    <div class="smc-item">
-                        <div style="font-size: 2em; font-weight: 700; color: var(--danger)">
-                            ${smc.bearishScore}
-                        </div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--danger); padding: 20px 0;">
+                        ${smc.bearishScore}
+                    </div>
+                </div>
+                <div class="smc-card">
+                    <div class="smc-card-title">🔄 ORDER BLOCKS</div>
+                    <div style="font-size: 1.5em; font-weight: 700; color: var(--text); padding: 20px 0;">
+                        ${smc.orderBlocks || 0}
+                    </div>
+                </div>
+                <div class="smc-card">
+                    <div class="smc-card-title">⚡ FAIR VALUE GAPS</div>
+                    <div style="font-size: 1.5em; font-weight: 700; color: var(--text); padding: 20px 0;">
+                        ${smc.fvg || 0}
                     </div>
                 </div>
             `;
-            document.getElementById('smcContainer').innerHTML = html;
+            document.getElementById('smc').innerHTML = html;
         }
 
         function saveSignal(signal) {
             try {
                 database.ref('signals').push(signal);
-                loadSignalHistory();
+                loadHistory();
             } catch (error) {
-                console.error('Error saving signal:', error);
+                console.error('Error saving:', error);
             }
         }
 
-        function loadSignalHistory() {
+        function loadHistory() {
             try {
                 database.ref('signals').orderByChild('timestamp').limitToLast(10).once('value').then(snapshot => {
                     const signals = [];
@@ -967,14 +772,14 @@
                     signals.reverse();
                     
                     if (signals.length === 0) {
-                        document.getElementById('historyContainer').innerHTML = 
+                        document.getElementById('history').innerHTML = 
                             '<p style="text-align: center; color: var(--muted); padding: 20px;">No signals yet</p>';
                         return;
                     }
                     
                     const html = signals.map(s => `
                         <div class="history-item">
-                            <button class="btn-delete" onclick="deleteSignal('${s.id}')">DEL</button>
+                            <button class="btn-del" onclick="deleteSignal('${s.id}')">DEL</button>
                             <div class="history-header">
                                 <span class="history-index">${s.index}</span>
                                 <span class="history-time">${new Date(s.timestamp).toLocaleString()}</span>
@@ -985,17 +790,20 @@
                         </div>
                     `).join('');
                     
-                    document.getElementById('historyContainer').innerHTML = html;
+                    document.getElementById('history').innerHTML = html;
                 });
             } catch (error) {
-                console.error('Error loading history:', error);
+                console.error('Error loading:', error);
             }
         }
 
         function deleteSignal(id) {
             if (confirm('Delete this signal?')) {
                 database.ref(`signals/${id}`).remove().then(() => {
-                    loadSignalHistory();
+                    loadHistory();
+                }).catch(err => {
+                    console.error('Delete error:', err);
+                    alert('Failed to delete signal');
                 });
             }
         }
@@ -1003,7 +811,7 @@
         window.addEventListener('load', () => {
             initChart();
             loadCompanies('US100');
-            loadSignalHistory();
+            loadHistory();
         });
     </script>
 </body>
