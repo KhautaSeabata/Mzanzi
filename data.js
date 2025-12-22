@@ -3,12 +3,34 @@
 // Based on proven working code from analysis.js
 // ============================================================================
 
-// Gold Symbol Configuration (using only proven working symbol)
-const GOLD_SYMBOL = 'frxXAUUSD'; // Proven to work from analysis.js
+// Symbol Configuration (using proven working symbols from analysis.js)
+const SYMBOLS = {
+    'XAUUSD': { 
+        name: 'GOLD (XAU/USD)', 
+        apiSymbol: 'frxXAUUSD',
+        basePrice: 2650
+    },
+    'US30': { 
+        name: 'US30 - Dow Jones', 
+        apiSymbol: 'WLDUS30',
+        basePrice: 38000
+    },
+    'US100': { 
+        name: 'US100 - NASDAQ 100', 
+        apiSymbol: 'WLDNAS100',
+        basePrice: 16500
+    },
+    'GER40': { 
+        name: 'GER40 - Germany 40', 
+        apiSymbol: 'WLDGDAXI',
+        basePrice: 17500
+    }
+};
 
 // Global State
 let canvas, ctx;
 let chartData = [];
+let currentSymbol = 'XAUUSD'; // Default to Gold
 let currentTimeframe = 300; // 5 minutes
 let ws = null;
 let isConnected = false;
@@ -71,17 +93,18 @@ function connectWebSocket() {
         console.log('✅ Connected to Deriv');
         updateConnectionStatus(true);
         
-        console.log(`📊 Requesting: ${GOLD_SYMBOL}`);
+        const apiSymbol = SYMBOLS[currentSymbol].apiSymbol;
+        console.log(`📊 Requesting: ${currentSymbol} (${apiSymbol})`);
         
         // Subscribe to ticks
         ws.send(JSON.stringify({ 
-            ticks: GOLD_SYMBOL, 
+            ticks: apiSymbol, 
             subscribe: 1 
         }));
         
         // Request historical candles
         ws.send(JSON.stringify({
-            ticks_history: GOLD_SYMBOL,
+            ticks_history: apiSymbol,
             count: 1000,
             end: 'latest',
             style: 'candles',
@@ -95,7 +118,7 @@ function connectWebSocket() {
         if (data.error) {
             console.error('❌ Deriv Error:', data.error.message);
             hideLoading();
-            alert(`Unable to load Gold data.\n\nError: ${data.error.message}\n\nThis symbol may not be available right now.\nPlease try again later.`);
+            alert(`Unable to load ${SYMBOLS[currentSymbol].name} data.\n\nError: ${data.error.message}\n\nThis symbol may not be available right now.\nPlease try another symbol or refresh later.`);
             return;
         }
         
@@ -287,11 +310,13 @@ function drawPriceScale(minPrice, maxPrice, height, padding) {
     ctx.font = '11px Roboto';
     ctx.textAlign = 'right';
     
+    const precision = getPrecision((minPrice + maxPrice) / 2);
+    
     for (let i = 0; i <= steps; i++) {
         const price = minPrice + i * priceStep;
         const y = padding.top + height - (i / steps) * height;
         
-        ctx.fillText(price.toFixed(2), canvas.width - padding.right + 55, y + 4);
+        ctx.fillText(price.toFixed(precision), canvas.width - padding.right + 55, y + 4);
     }
     
     // Current price line
@@ -309,7 +334,7 @@ function drawPriceScale(minPrice, maxPrice, height, padding) {
         ctx.setLineDash([]);
         
         // Price label
-        const text = currentPrice.toFixed(2);
+        const text = currentPrice.toFixed(precision);
         const textWidth = ctx.measureText(text).width;
         
         ctx.fillStyle = '#00ff88';
@@ -348,10 +373,11 @@ function drawCrosshair(minPrice, maxPrice, visibleData, candleW, padding, chartW
     const candleIndex = Math.floor((crosshairX - padding.left) / candleW);
     if (candleIndex >= 0 && candleIndex < visibleData.length) {
         const candle = visibleData[candleIndex];
-        document.getElementById('infoOpen').textContent = candle.o.toFixed(2);
-        document.getElementById('infoHigh').textContent = candle.h.toFixed(2);
-        document.getElementById('infoLow').textContent = candle.l.toFixed(2);
-        document.getElementById('infoClose').textContent = candle.c.toFixed(2);
+        const precision = getPrecision(candle.c);
+        document.getElementById('infoOpen').textContent = candle.o.toFixed(precision);
+        document.getElementById('infoHigh').textContent = candle.h.toFixed(precision);
+        document.getElementById('infoLow').textContent = candle.l.toFixed(precision);
+        document.getElementById('infoClose').textContent = candle.c.toFixed(precision);
     }
 }
 
@@ -459,21 +485,49 @@ window.changeTimeframe = function(tf) {
     showLoading();
     
     if (isConnected && ws) {
+        const apiSymbol = SYMBOLS[currentSymbol].apiSymbol;
+        
         ws.send(JSON.stringify({ forget_all: 'ticks' }));
         
         ws.send(JSON.stringify({ 
-            ticks: GOLD_SYMBOL, 
+            ticks: apiSymbol, 
             subscribe: 1 
         }));
         
         ws.send(JSON.stringify({
-            ticks_history: GOLD_SYMBOL,
+            ticks_history: apiSymbol,
             count: 1000,
             end: 'latest',
             style: 'candles',
             granularity: currentTimeframe
         }));
     }
+};
+
+window.changeSymbol = function() {
+    const newSymbol = document.getElementById('symbolSelector').value;
+    
+    if (newSymbol === currentSymbol) return;
+    
+    console.log(`🔄 Switching from ${currentSymbol} to ${newSymbol}`);
+    
+    currentSymbol = newSymbol;
+    chartData = [];
+    scroll = 0;
+    autoScroll = true;
+    
+    // Update symbol display
+    updateSymbolDisplay();
+    
+    showLoading();
+    
+    if (ws) {
+        ws.close();
+    }
+    
+    setTimeout(() => {
+        connectWebSocket();
+    }, 500);
 };
 
 window.zoomIn = function() {
@@ -522,11 +576,27 @@ function updatePriceDisplay() {
     const change = price - prev.o;
     const changePercent = (change / prev.o) * 100;
     
-    document.getElementById('currentPrice').textContent = price.toFixed(2);
+    const precision = getPrecision(price);
+    
+    document.getElementById('currentPrice').textContent = price.toFixed(precision);
     
     const changeEl = document.getElementById('priceChange');
-    changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+    changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(precision)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
     changeEl.className = 'price-change ' + (change >= 0 ? 'positive' : 'negative');
+}
+
+function updateSymbolDisplay() {
+    const symbolInfo = SYMBOLS[currentSymbol];
+    document.querySelector('.symbol-name').textContent = currentSymbol;
+    document.querySelector('.symbol-description').textContent = symbolInfo.name;
+}
+
+function getPrecision(price) {
+    // Determine precision based on price magnitude
+    if (price < 1) return 5;
+    if (price < 100) return 4;
+    if (price < 1000) return 3;
+    return 2;
 }
 
 function updateConnectionStatus(connected) {
