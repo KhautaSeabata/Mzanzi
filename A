@@ -782,4 +782,599 @@
 
                         meta.data.forEach((point, i) => {
                             const candle = candleData[i];
-                            if (!can
+                            if (!candle) return;
+
+                            const x = point.x;
+                            const yOpen = chart.scales.y.getPixelForValue(candle.open);
+                            const yClose = chart.scales.y.getPixelForValue(candle.close);
+                            const yHigh = chart.scales.y.getPixelForValue(candle.high);
+                            const yLow = chart.scales.y.getPixelForValue(candle.low);
+
+                            const isBullish = candle.close >= candle.open;
+                            const color = isBullish ? '#00ff88' : '#ff3366';
+                            const wickWidth = 2;
+                            const bodyWidth = 8;
+
+                            ctx.strokeStyle = color;
+                            ctx.fillStyle = color;
+                            ctx.lineWidth = wickWidth;
+
+                            // Draw wick
+                            ctx.beginPath();
+                            ctx.moveTo(x, yHigh);
+                            ctx.lineTo(x, yLow);
+                            ctx.stroke();
+
+                            // Draw body
+                            const bodyHeight = Math.abs(yClose - yOpen);
+                            const bodyY = Math.min(yOpen, yClose);
+                            
+                            if (isBullish) {
+                                ctx.fillRect(x - bodyWidth / 2, bodyY, bodyWidth, bodyHeight || 1);
+                            } else {
+                                ctx.fillRect(x - bodyWidth / 2, bodyY, bodyWidth, bodyHeight || 1);
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        function updateChart() {
+            if (!chartInstance || candleData.length === 0) return;
+
+            const chartData = candleData.map(c => ({
+                x: c.time,
+                o: c.open,
+                h: c.high,
+                l: c.low,
+                c: c.close
+            }));
+
+            chartInstance.data.datasets[0].data = chartData;
+            chartInstance.update('none');
+        }
+
+        function selectIndex(index) {
+            currentIndex = index;
+            document.getElementById('idx').textContent = index;
+            document.getElementById('comp-idx').textContent = index;
+            document.getElementById('smc-idx').textContent = index;
+
+            // Update button states
+            document.querySelectorAll('.index-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === index || btn.textContent === 'GOLD' && index === 'XAUUSD') {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update companies display
+            updateCompaniesDisplay();
+
+            // Subscribe to new symbol
+            subscribeToSymbol(index);
+            candleData = [];
+            updateChart();
+        }
+
+        function selectTimeframe(tf) {
+            currentTimeframe = tf;
+
+            // Update button states
+            document.querySelectorAll('.tf-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Resubscribe with new timeframe
+            subscribeToSymbol(currentIndex);
+            candleData = [];
+        }
+
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // Update nav buttons
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function updateCompaniesDisplay() {
+            const container = document.getElementById('companies');
+            const companies = companiesData[currentIndex] || [];
+
+            container.innerHTML = companies.map(company => `
+                <div class="company-card">
+                    <div class="company-header">
+                        <div class="company-name">${company.name}</div>
+                        <div class="company-symbol">${company.symbol}</div>
+                    </div>
+                    <div class="company-data">
+                        <span style="color: var(--muted)">Weight:</span>
+                        <span style="color: var(--accent)">${company.weight}</span>
+                    </div>
+                    <div class="company-data">
+                        <span style="color: var(--muted)">Change:</span>
+                        <span style="color: ${company.change.startsWith('+') ? 'var(--bull)' : 'var(--bear)'}">${company.change}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function generateSignal() {
+            const btn = document.querySelector('.btn-gen');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div>Generating...';
+
+            try {
+                // Ensure we have candle data
+                if (candleData.length < 50) {
+                    throw new Error('Not enough data. Please wait for more candles.');
+                }
+
+                // Run SMC analysis
+                const smcResult = analyzeSMC(candleData);
+
+                // Generate signal based on SMC
+                const signal = generateTradingSignal(smcResult);
+
+                // Display signal
+                displaySignal(signal, smcResult);
+
+                // Display SMC analysis
+                displaySMCAnalysis(smcResult);
+
+                // Save to history
+                saveSignalToHistory(signal);
+
+                // Save to Firebase
+                await saveToFirebase(signal, smcResult);
+
+                btn.innerHTML = '✅ SIGNAL GENERATED';
+                setTimeout(() => {
+                    btn.innerHTML = '🎯 GENERATE SIGNAL';
+                    btn.disabled = false;
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error generating signal:', error);
+                btn.innerHTML = '❌ ERROR';
+                alert(error.message || 'Failed to generate signal');
+                setTimeout(() => {
+                    btn.innerHTML = '🎯 GENERATE SIGNAL';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        function generateTradingSignal(smcResult) {
+            const currentPrice = candleData[candleData.length - 1].close;
+            const atr = calculateATR(candleData, 14);
+            
+            // Determine direction based on SMC bias
+            const direction = smcResult.bias === 'BULLISH' ? 'BUY' : 
+                            smcResult.bias === 'BEARISH' ? 'SELL' : 
+                            smcResult.bullishScore > smcResult.bearishScore ? 'BUY' : 'SELL';
+
+            // Volatility multiplier
+            const volatilityMultiplier = {
+                'VH': 2.5,
+                'H': 2.0,
+                'M': 1.5,
+                'L': 1.0
+            };
+
+            const vol = estimateVolatility(candleData);
+            const multiplier = volatilityMultiplier[vol] || 1.5;
+
+            // Calculate entry and targets
+            let entry, tp1, tp2, sl, expectedPips;
+
+            if (direction === 'BUY') {
+                entry = currentPrice - (atr * 0.2);
+                tp1 = entry + (atr * multiplier);
+                tp2 = entry + (atr * multiplier * 1.8);
+                sl = entry - (atr * 0.8);
+                expectedPips = Math.round((tp1 - entry) / currentPrice * 10000);
+            } else {
+                entry = currentPrice + (atr * 0.2);
+                tp1 = entry - (atr * multiplier);
+                tp2 = entry - (atr * multiplier * 1.8);
+                sl = entry + (atr * 0.8);
+                expectedPips = Math.round((entry - tp1) / currentPrice * 10000);
+            }
+
+            // Calculate confidence
+            const maxScore = Math.max(smcResult.bullishScore, smcResult.bearishScore);
+            const totalScore = smcResult.bullishScore + smcResult.bearishScore;
+            const confidence = totalScore > 0 ? Math.round((maxScore / totalScore) * 100) : 50;
+
+            return {
+                index: currentIndex,
+                timestamp: new Date().toISOString(),
+                direction: direction,
+                sentiment: smcResult.bias,
+                phase: smcResult.phase,
+                currentPrice: Number(currentPrice.toFixed(5)),
+                entry: Number(entry.toFixed(5)),
+                tp1: Number(tp1.toFixed(5)),
+                tp2: Number(tp2.toFixed(5)),
+                sl: Number(sl.toFixed(5)),
+                volatility: vol,
+                expectedPips: expectedPips,
+                confidence: confidence,
+                orderBlocks: smcResult.orderBlocks,
+                fvg: smcResult.fvg,
+                premium: smcResult.premium
+            };
+        }
+
+        function estimateVolatility(candles) {
+            if (candles.length < 20) return 'M';
+
+            const recent = candles.slice(-20);
+            const returns = [];
+
+            for (let i = 1; i < recent.length; i++) {
+                const ret = (recent[i].close - recent[i - 1].close) / recent[i - 1].close;
+                returns.push(Math.abs(ret));
+            }
+
+            const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+            const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / returns.length;
+            const stdDev = Math.sqrt(variance) * 100;
+
+            if (stdDev > 0.5) return 'VH';
+            if (stdDev > 0.3) return 'H';
+            if (stdDev > 0.15) return 'M';
+            return 'L';
+        }
+
+        function calculateATR(candles, period = 14) {
+            if (candles.length < period) return candles[candles.length - 1].high - candles[candles.length - 1].low;
+
+            let atr = 0;
+            for (let i = candles.length - period; i < candles.length; i++) {
+                const curr = candles[i];
+                const prev = i > 0 ? candles[i - 1] : curr;
+
+                const tr = Math.max(
+                    curr.high - curr.low,
+                    Math.abs(curr.high - prev.close),
+                    Math.abs(curr.low - prev.close)
+                );
+
+                atr += tr;
+            }
+
+            return atr / period;
+        }
+
+        function displaySignal(signal, smcResult) {
+            const signalDiv = document.getElementById('signal');
+            const directionClass = signal.direction === 'BUY' ? 'buy' : 'sell';
+
+            signalDiv.innerHTML = `
+                <div class="signal-box">
+                    <div class="signal-row">
+                        <span class="signal-label">INDEX</span>
+                        <span class="signal-value">${signal.index}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">DIRECTION</span>
+                        <span class="signal-value ${directionClass}">${signal.direction}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">BIAS</span>
+                        <span class="signal-value">${signal.sentiment}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">PHASE</span>
+                        <span class="signal-value">${signal.phase}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">CURRENT</span>
+                        <span class="signal-value">${signal.currentPrice}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">ENTRY</span>
+                        <span class="signal-value ${directionClass}">${signal.entry}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">TP1</span>
+                        <span class="signal-value ${directionClass}">${signal.tp1}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">TP2</span>
+                        <span class="signal-value ${directionClass}">${signal.tp2}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">STOP LOSS</span>
+                        <span class="signal-value">${signal.sl}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">VOLATILITY</span>
+                        <span class="signal-value">${signal.volatility}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">EXPECTED PIPS</span>
+                        <span class="signal-value ${directionClass}">${signal.expectedPips}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">CONFIDENCE</span>
+                        <span class="signal-value">${signal.confidence}%</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">PREMIUM/DISCOUNT</span>
+                        <span class="signal-value">${signal.premium}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displaySMCAnalysis(smcResult) {
+            const smcDiv = document.getElementById('smc');
+
+            smcDiv.innerHTML = `
+                <div class="smc-card">
+                    <div class="smc-card-title">📈 MARKET BIAS</div>
+                    <div class="signal-row">
+                        <span class="signal-label">Overall Bias</span>
+                        <span class="signal-value ${smcResult.bias === 'BULLISH' ? 'buy' : smcResult.bias === 'BEARISH' ? 'sell' : ''}">${smcResult.bias}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Market Phase</span>
+                        <span class="signal-value">${smcResult.phase}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Order Flow</span>
+                        <span class="signal-value">${smcResult.orderFlow}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Bullish Score</span>
+                        <span class="signal-value buy">${smcResult.bullishScore}%</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Bearish Score</span>
+                        <span class="signal-value sell">${smcResult.bearishScore}%</span>
+                    </div>
+                </div>
+
+                <div class="smc-card">
+                    <div class="smc-card-title">📊 ORDER BLOCKS</div>
+                    <div class="signal-row">
+                        <span class="signal-label">Total OBs</span>
+                        <span class="signal-value">${smcResult.orderBlocks}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Bullish OBs</span>
+                        <span class="signal-value buy">${smcResult.details.bullishOB}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Bearish OBs</span>
+                        <span class="signal-value sell">${smcResult.details.bearishOB}</span>
+                    </div>
+                </div>
+
+                <div class="smc-card">
+                    <div class="smc-card-title">⚡ FAIR VALUE GAPS</div>
+                    <div class="signal-row">
+                        <span class="signal-label">Total FVGs</span>
+                        <span class="signal-value">${smcResult.fvg}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Bullish FVGs</span>
+                        <span class="signal-value buy">${smcResult.details.bullishFVG}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Bearish FVGs</span>
+                        <span class="signal-value sell">${smcResult.details.bearishFVG}</span>
+                    </div>
+                </div>
+
+                <div class="smc-card">
+                    <div class="smc-card-title">💧 LIQUIDITY ZONES</div>
+                    <div class="signal-row">
+                        <span class="signal-label">Total Zones</span>
+                        <span class="signal-value">${smcResult.liquidityZones}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Buy Liquidity</span>
+                        <span class="signal-value buy">${smcResult.details.buyLiquidity}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Sell Liquidity</span>
+                        <span class="signal-value sell">${smcResult.details.sellLiquidity}</span>
+                    </div>
+                </div>
+
+                <div class="smc-card">
+                    <div class="smc-card-title">🔄 MARKET STRUCTURE</div>
+                    <div class="signal-row">
+                        <span class="signal-label">Break of Structure</span>
+                        <span class="signal-value">${smcResult.bos}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Change of Character</span>
+                        <span class="signal-value">${smcResult.choch}</span>
+                    </div>
+                    <div class="signal-row">
+                        <span class="signal-label">Premium/Discount</span>
+                        <span class="signal-value">${smcResult.premium}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveSignalToHistory(signal) {
+            const historyDiv = document.getElementById('history');
+
+            // Create history item
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `
+                <div class="history-header">
+                    <div class="history-index">${signal.index}</div>
+                    <div class="history-time">${new Date(signal.timestamp).toLocaleString()}</div>
+                </div>
+                <div class="signal-row">
+                    <span class="signal-label">Direction</span>
+                    <span class="signal-value ${signal.direction === 'BUY' ? 'buy' : 'sell'}">${signal.direction}</span>
+                </div>
+                <div class="signal-row">
+                    <span class="signal-label">Entry</span>
+                    <span class="signal-value">${signal.entry}</span>
+                </div>
+                <div class="signal-row">
+                    <span class="signal-label">TP1 / TP2</span>
+                    <span class="signal-value">${signal.tp1} / ${signal.tp2}</span>
+                </div>
+                <div class="signal-row">
+                    <span class="signal-label">Confidence</span>
+                    <span class="signal-value">${signal.confidence}%</span>
+                </div>
+            `;
+
+            // Remove "no signals" message if it exists
+            if (historyDiv.querySelector('p')) {
+                historyDiv.innerHTML = '';
+            }
+
+            // Add to top of history
+            historyDiv.insertBefore(item, historyDiv.firstChild);
+
+            // Keep only last 10 signals
+            while (historyDiv.children.length > 10) {
+                historyDiv.removeChild(historyDiv.lastChild);
+            }
+        }
+
+        async function saveToFirebase(signal, smcResult) {
+            try {
+                const data = {
+                    ...signal,
+                    smc: smcResult,
+                    savedAt: new Date().toISOString()
+                };
+
+                await database.ref('signals').push(data);
+                console.log('Signal saved to Firebase');
+            } catch (error) {
+                console.error('Error saving to Firebase:', error);
+            }
+        }
+
+        function downloadFiles() {
+            // Get the latest signal
+            const signalDiv = document.getElementById('signal');
+            if (!signalDiv.querySelector('.signal-box')) {
+                alert('Generate a signal first!');
+                return;
+            }
+
+            // Create downloadable content
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `MzanziFX_Signal_${currentIndex}_${timestamp}.txt`;
+
+            const signalData = extractSignalData();
+            const content = formatSignalForDownload(signalData);
+
+            // Download as text file
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert(`Signal downloaded: ${filename}`);
+        }
+
+        function extractSignalData() {
+            const rows = document.querySelectorAll('#signal .signal-row');
+            const data = {};
+
+            rows.forEach(row => {
+                const label = row.querySelector('.signal-label').textContent.trim();
+                const value = row.querySelector('.signal-value').textContent.trim();
+                data[label] = value;
+            });
+
+            return data;
+        }
+
+        function formatSignalForDownload(data) {
+            let content = '═══════════════════════════════════════════════\n';
+            content += '          MZANZIFX TRADING SIGNAL\n';
+            content += '═══════════════════════════════════════════════\n\n';
+            content += `Generated: ${new Date().toLocaleString()}\n`;
+            content += `Timeframe: ${getTimeframeName(currentTimeframe)}\n\n`;
+
+            content += '───────────────────────────────────────────────\n';
+            content += 'SIGNAL DETAILS\n';
+            content += '───────────────────────────────────────────────\n\n';
+
+            Object.entries(data).forEach(([key, value]) => {
+                content += `${key.padEnd(20)}: ${value}\n`;
+            });
+
+            content += '\n───────────────────────────────────────────────\n';
+            content += 'RISK MANAGEMENT\n';
+            content += '───────────────────────────────────────────────\n\n';
+            content += '• Risk only 1-2% of account per trade\n';
+            content += '• Move SL to breakeven at TP1\n';
+            content += '• Consider partial profits at TP1\n';
+            content += '• Use proper position sizing\n\n';
+
+            content += '───────────────────────────────────────────────\n';
+            content += 'DISCLAIMER\n';
+            content += '───────────────────────────────────────────────\n\n';
+            content += 'Trading involves significant risk. This signal is\n';
+            content += 'for educational purposes only. Always conduct your\n';
+            content += 'own analysis before trading.\n\n';
+
+            content += '═══════════════════════════════════════════════\n';
+            content += '           © 2024 MzanziFX\n';
+            content += '═══════════════════════════════════════════════\n';
+
+            return content;
+        }
+
+        function getTimeframeName(seconds) {
+            if (seconds === 60) return '1 Minute';
+            if (seconds === 300) return '5 Minutes';
+            if (seconds === 900) return '15 Minutes';
+            if (seconds === 3600) return '1 Hour';
+            if (seconds === 14400) return '4 Hours';
+            if (seconds === 86400) return '1 Day';
+            return `${seconds}s`;
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initChart();
+            connectDerivWS();
+            updateCompaniesDisplay();
+        });
+
+        // Keep connection alive
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ ping: 1 }));
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
