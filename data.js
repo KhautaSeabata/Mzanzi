@@ -3,9 +3,8 @@
 // Based on proven working code from analysis.js
 // ============================================================================
 
-// Gold Symbol Configuration (using exact symbols from working code)
-const GOLD_SYMBOL = 'frxXAUUSD'; // Primary - matches working code
-const BACKUP_SYMBOL = 'frxGOLD';   // Backup
+// Gold Symbol Configuration (using only proven working symbol)
+const GOLD_SYMBOL = 'frxXAUUSD'; // Proven to work from analysis.js
 
 // Global State
 let canvas, ctx;
@@ -13,7 +12,6 @@ let chartData = [];
 let currentTimeframe = 300; // 5 minutes
 let ws = null;
 let isConnected = false;
-let useBackupSymbol = false;
 
 // Chart Settings (match working code exactly)
 let zoom = 80;
@@ -73,18 +71,17 @@ function connectWebSocket() {
         console.log('✅ Connected to Deriv');
         updateConnectionStatus(true);
         
-        const apiSymbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
-        console.log(`📊 Requesting: ${apiSymbol}`);
+        console.log(`📊 Requesting: ${GOLD_SYMBOL}`);
         
-        // Subscribe to ticks (exact same as working code)
+        // Subscribe to ticks
         ws.send(JSON.stringify({ 
-            ticks: apiSymbol, 
+            ticks: GOLD_SYMBOL, 
             subscribe: 1 
         }));
         
-        // Request historical candles (exact same as working code)
+        // Request historical candles
         ws.send(JSON.stringify({
-            ticks_history: apiSymbol,
+            ticks_history: GOLD_SYMBOL,
             count: 1000,
             end: 'latest',
             style: 'candles',
@@ -97,17 +94,8 @@ function connectWebSocket() {
         
         if (data.error) {
             console.error('❌ Deriv Error:', data.error.message);
-            
-            // Try backup symbol if primary fails
-            if (!useBackupSymbol) {
-                console.log('⚠️ Trying backup symbol:', BACKUP_SYMBOL);
-                useBackupSymbol = true;
-                ws.close();
-                setTimeout(() => connectWebSocket(), 1000);
-            } else {
-                hideLoading();
-                alert(`Unable to load Gold data.\n\nError: ${data.error.message}\n\nPlease refresh the page.`);
-            }
+            hideLoading();
+            alert(`Unable to load Gold data.\n\nError: ${data.error.message}\n\nThis symbol may not be available right now.\nPlease try again later.`);
             return;
         }
         
@@ -473,15 +461,13 @@ window.changeTimeframe = function(tf) {
     if (isConnected && ws) {
         ws.send(JSON.stringify({ forget_all: 'ticks' }));
         
-        const apiSymbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
-        
         ws.send(JSON.stringify({ 
-            ticks: apiSymbol, 
+            ticks: GOLD_SYMBOL, 
             subscribe: 1 
         }));
         
         ws.send(JSON.stringify({
-            ticks_history: apiSymbol,
+            ticks_history: GOLD_SYMBOL,
             count: 1000,
             end: 'latest',
             style: 'candles',
