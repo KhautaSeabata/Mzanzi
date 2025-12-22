@@ -40,12 +40,37 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🏅 Gold Trading Terminal Starting...');
     console.log(`📊 Symbol: ${GOLD_SYMBOL}`);
     
+    // Check internet connection
+    if (!navigator.onLine) {
+        alert('No internet connection detected.\n\nPlease connect to the internet and refresh the page.');
+        hideLoading();
+        return;
+    }
+    
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+    
+    // Listen for online/offline events
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     
     setupInteraction();
     connectWebSocket();
 });
+
+function handleOnline() {
+    console.log('🌐 Internet connection restored');
+    if (!isConnected && chartData.length === 0) {
+        alert('Connection restored! Reconnecting...');
+        connectWebSocket();
+    }
+}
+
+function handleOffline() {
+    console.log('📡 Internet connection lost');
+    updateConnectionStatus(false);
+    alert('Internet connection lost.\n\nPlease check your connection.');
+}
 
 function resizeCanvas() {
     const container = canvas.parentElement;
@@ -66,11 +91,22 @@ function connectWebSocket() {
     }
     
     console.log('🔌 Connecting to Deriv WebSocket...');
+    showLoading();
     
     try {
         ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
         
+        // Set timeout for connection
+        const connectionTimeout = setTimeout(() => {
+            if (!isConnected) {
+                console.error('❌ Connection timeout');
+                ws.close();
+                retryConnection();
+            }
+        }, 10000); // 10 second timeout
+        
         ws.onopen = () => {
+            clearTimeout(connectionTimeout);
             console.log('✅ Connected to Deriv');
             updateConnectionStatus(true);
             requestCandles();
@@ -83,18 +119,27 @@ function connectWebSocket() {
                 console.error('❌ Deriv Error:', data.error.message);
                 
                 // Try backup symbol if primary fails
-                if (!useBackupSymbol) {
+                if (!useBackupSymbol && data.error.code !== 'RateLimit') {
                     console.log('⚠️ Trying backup symbol:', BACKUP_SYMBOL);
                     useBackupSymbol = true;
-                    requestCandles();
+                    setTimeout(() => requestCandles(), 1000);
                 } else {
-                    alert('Unable to load Gold data. Please check your connection and refresh.');
                     hideLoading();
+                    alert('Unable to load Gold data from Deriv.\n\nError: ' + data.error.message + '\n\nPlease:\n• Check your internet connection\n• Wait a moment and refresh\n• Try again later');
                 }
                 return;
             }
             
             if (data.candles) {
+                if (data.candles.length === 0) {
+                    console.warn('⚠️ No candles received');
+                    if (!useBackupSymbol) {
+                        useBackupSymbol = true;
+                        requestCandles();
+                    }
+                    return;
+                }
+                
                 console.log(`✅ Received ${data.candles.length} candles`);
                 processCandles(data.candles);
                 hideLoading();
@@ -107,12 +152,16 @@ function connectWebSocket() {
         };
         
         ws.onerror = (error) => {
+            clearTimeout(connectionTimeout);
             console.error('❌ WebSocket Error:', error);
             updateConnectionStatus(false);
+            hideLoading();
+            retryConnection();
         };
         
-        ws.onclose = () => {
-            console.log('🔌 WebSocket closed');
+        ws.onclose = (event) => {
+            clearTimeout(connectionTimeout);
+            console.log('🔌 WebSocket closed', event.code, event.reason);
             updateConnectionStatus(false);
             
             // Auto-reconnect after 3 seconds if we have data
@@ -123,14 +172,34 @@ function connectWebSocket() {
                         connectWebSocket();
                     }
                 }, 3000);
+            } else {
+                retryConnection();
             }
         };
         
     } catch (error) {
         console.error('❌ Failed to create WebSocket:', error);
-        alert('Connection failed. Please check your internet and refresh the page.');
-        updateConnectionStatus(false);
         hideLoading();
+        alert('Connection failed.\n\nError: ' + error.message + '\n\nPlease check your internet and refresh the page.');
+    }
+}
+
+let retryAttempts = 0;
+const maxRetries = 3;
+
+function retryConnection() {
+    if (retryAttempts < maxRetries) {
+        retryAttempts++;
+        const delay = retryAttempts * 2000; // 2s, 4s, 6s
+        console.log(`🔄 Retry ${retryAttempts}/${maxRetries} in ${delay/1000}s...`);
+        
+        setTimeout(() => {
+            connectWebSocket();
+        }, delay);
+    } else {
+        hideLoading();
+        alert('Unable to connect to Deriv after ' + maxRetries + ' attempts.\n\nPlease:\n• Check your internet connection\n• Disable any VPN or proxy\n• Refresh the page\n• Try again later');
+        retryAttempts = 0;
     }
 }
 
@@ -170,6 +239,7 @@ function processCandles(candles) {
         c: parseFloat(c.close)
     }));
     
+    retryAttempts = 0; // Reset retry counter on success
     console.log(`✅ Chart data loaded: ${chartData.length} candles`);
     drawChart();
     updatePriceDisplay();
