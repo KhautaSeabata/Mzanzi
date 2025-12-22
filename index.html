@@ -6,7 +6,8 @@
     <title>MzanziFX Trading Signals</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -264,6 +265,112 @@
         .btn-gen:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 255, 136, 0.3); }
         .btn-gen:disabled { background: var(--border); cursor: not-allowed; }
 
+        .history-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .history-index {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .history-time {
+            font-size: 0.8em;
+            color: var(--muted);
+        }
+
+        .btn-del {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            background: var(--danger);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.7em;
+            cursor: pointer;
+        }
+
+        .btn-del:hover { background: #ff1144; }
+
+        .companies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .company-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .company-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+        .company-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .company-name {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .company-symbol {
+            background: var(--bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .company-data {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 0.9em;
+        }
+
+        .smc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .smc-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .smc-card-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
         @media (max-width: 768px) {
             .grid { grid-template-columns: 1fr; }
             .index-btns { width: 100%; }
@@ -277,6 +384,8 @@
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="switchTab('chart-tab')">CHART</button>
             <button class="nav-tab" onclick="switchTab('signals-tab')">SIGNALS</button>
+            <button class="nav-tab" onclick="switchTab('companies-tab')">COMPANIES</button>
+            <button class="nav-tab" onclick="switchTab('smc-tab')">SMC</button>
         </div>
         <div class="status">
             <div class="status-dot" id="statusDot"></div>
@@ -288,19 +397,19 @@
         <div id="chart-tab" class="tab-content active">
             <div class="controls">
                 <div class="index-btns">
-                    <button class="index-btn active" data-symbol="R_100">Volatility 100</button>
-                    <button class="index-btn" data-symbol="R_75">Volatility 75</button>
-                    <button class="index-btn" data-symbol="R_50">Volatility 50</button>
-                    <button class="index-btn" data-symbol="R_25">Volatility 25</button>
+                    <button class="index-btn active" onclick="selectIndex('US100')">US100</button>
+                    <button class="index-btn" onclick="selectIndex('US30')">US30</button>
+                    <button class="index-btn" onclick="selectIndex('GER40')">GER40</button>
+                    <button class="index-btn" onclick="selectIndex('XAUUSD')">GOLD</button>
                 </div>
                 <div style="color: var(--muted); font-family: 'JetBrains Mono'; font-size: 0.85em;">
-                    <span id="idx">Volatility 100</span> | <span id="price">--</span>
+                    <span id="idx">US100</span> | <span id="price">--</span>
                 </div>
             </div>
             <div class="chart-wrapper">
                 <div class="loading-overlay" id="loadingOverlay">
                     <div class="spinner"></div>
-                    <div class="loading-text">Connecting to Deriv...</div>
+                    <div class="loading-text">Loading market data...</div>
                 </div>
                 <canvas id="chart"></canvas>
             </div>
@@ -309,9 +418,9 @@
         <div id="signals-tab" class="tab-content">
             <div class="grid">
                 <div class="panel">
-                    <div class="panel-title">📊 MARKET DATA</div>
-                    <div id="marketData">
-                        <p style="text-align: center; color: var(--muted); padding: 20px;">Connecting to market...</p>
+                    <div class="panel-title">📜 SIGNAL HISTORY</div>
+                    <div id="history">
+                        <p style="text-align: center; color: var(--muted); padding: 20px;">No signals yet</p>
                     </div>
                 </div>
                 <div class="panel">
@@ -325,260 +434,326 @@
                 </div>
             </div>
         </div>
+
+        <div id="companies-tab" class="tab-content">
+            <div style="margin-bottom: 20px;">
+                <h2 style="color: var(--accent); font-size: 1.5em; margin-bottom: 5px;">
+                    TOP COMPANIES - <span id="comp-idx">US100</span>
+                </h2>
+                <p style="color: var(--muted); font-size: 0.9em;">Key factors affecting the index</p>
+            </div>
+            <div class="companies-grid" id="companies"></div>
+        </div>
+
+        <div id="smc-tab" class="tab-content">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 2em; font-weight: 700; color: var(--accent); margin-bottom: 10px;">
+                    🧠 SMART MONEY CONCEPTS
+                </h1>
+                <p style="color: var(--muted); font-size: 1.1em;">ICT Analysis for XAUUSD (Gold)</p>
+            </div>
+            <div class="smc-grid" id="smc">
+                <p style="text-align: center; color: var(--muted); padding: 40px; grid-column: 1/-1;">
+                    Generate a GOLD signal to see SMC analysis
+                </p>
+            </div>
+        </div>
     </div>
 
+    <script src="smc.js"></script>
     <script>
-        class DerivWebSocket {
-            constructor() {
-                this.ws = null;
-                this.appId = 1089; // Demo app ID
-                this.currentSymbol = 'R_100';
-                this.candleData = [];
-                this.tickSubscription = null;
-                this.reconnectAttempts = 0;
-                this.maxReconnectAttempts = 5;
-            }
+        // Firebase configuration
+        const firebaseConfig = { databaseURL: "https://mzanzifx-default-rtdb.firebaseio.com" };
+        let database;
+        
+        try {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+        } catch (error) {
+            console.error('Firebase error:', error);
+        }
 
-            connect() {
-                return new Promise((resolve, reject) => {
-                    this.updateStatus('connecting');
-                    
-                    this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.appId}`);
-                    
-                    this.ws.onopen = () => {
-                        console.log('✓ Connected to Deriv');
-                        this.reconnectAttempts = 0;
-                        this.updateStatus('connected');
-                        resolve();
-                    };
-                    
-                    this.ws.onmessage = (msg) => {
-                        const data = JSON.parse(msg.data);
-                        this.handleMessage(data);
-                    };
-                    
-                    this.ws.onerror = (error) => {
-                        console.error('WebSocket error:', error);
-                        this.updateStatus('disconnected');
-                        reject(error);
-                    };
-                    
-                    this.ws.onclose = () => {
-                        console.log('Disconnected from Deriv');
-                        this.updateStatus('disconnected');
-                        this.attemptReconnect();
-                    };
-                });
-            }
+        let currentIndex = 'US100';
+        let chartInstance;
+        let priceHistory = {};
+        let wsConnection = null;
 
-            attemptReconnect() {
-                if (this.reconnectAttempts < this.maxReconnectAttempts) {
-                    this.reconnectAttempts++;
-                    console.log(`Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-                    setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
-                }
-            }
+        const companiesData = {
+            'US100': [
+                { name: 'Apple', symbol: 'AAPL', change: '+1.2%', weight: '12.5%' },
+                { name: 'Microsoft', symbol: 'MSFT', change: '+0.8%', weight: '11.8%' },
+                { name: 'Amazon', symbol: 'AMZN', change: '-0.3%', weight: '7.2%' },
+                { name: 'NVIDIA', symbol: 'NVDA', change: '+2.1%', weight: '6.9%' },
+                { name: 'Alphabet', symbol: 'GOOGL', change: '+0.5%', weight: '6.1%' },
+                { name: 'Meta', symbol: 'META', change: '+1.5%', weight: '4.8%' },
+                { name: 'Tesla', symbol: 'TSLA', change: '-1.2%', weight: '4.3%' },
+                { name: 'Broadcom', symbol: 'AVGO', change: '+0.9%', weight: '3.7%' },
+                { name: 'Costco', symbol: 'COST', change: '+0.4%', weight: '2.9%' },
+                { name: 'Netflix', symbol: 'NFLX', change: '+1.1%', weight: '2.5%' }
+            ],
+            'US30': [
+                { name: 'UnitedHealth', symbol: 'UNH', change: '+0.7%', weight: '9.2%' },
+                { name: 'Goldman Sachs', symbol: 'GS', change: '+1.1%', weight: '7.8%' },
+                { name: 'Microsoft', symbol: 'MSFT', change: '+0.8%', weight: '7.5%' },
+                { name: 'Home Depot', symbol: 'HD', change: '-0.2%', weight: '6.9%' },
+                { name: 'Salesforce', symbol: 'CRM', change: '+1.3%', weight: '6.1%' },
+                { name: 'Visa', symbol: 'V', change: '+0.5%', weight: '5.8%' },
+                { name: 'McDonald\'s', symbol: 'MCD', change: '+0.3%', weight: '5.2%' },
+                { name: 'Boeing', symbol: 'BA', change: '-0.8%', weight: '4.7%' },
+                { name: 'Caterpillar', symbol: 'CAT', change: '+0.9%', weight: '4.3%' },
+                { name: 'Apple', symbol: 'AAPL', change: '+1.2%', weight: '4.1%' }
+            ],
+            'GER40': [
+                { name: 'SAP', symbol: 'SAP', change: '+0.9%', weight: '11.2%' },
+                { name: 'Siemens', symbol: 'SIE', change: '+1.1%', weight: '9.8%' },
+                { name: 'Allianz', symbol: 'ALV', change: '+0.4%', weight: '7.9%' },
+                { name: 'Airbus', symbol: 'AIR', change: '-0.5%', weight: '6.7%' },
+                { name: 'BASF', symbol: 'BAS', change: '+0.6%', weight: '5.9%' },
+                { name: 'Volkswagen', symbol: 'VOW3', change: '-0.3%', weight: '5.4%' },
+                { name: 'Deutsche Telekom', symbol: 'DTE', change: '+0.7%', weight: '5.1%' },
+                { name: 'BMW', symbol: 'BMW', change: '+0.2%', weight: '4.8%' },
+                { name: 'Bayer', symbol: 'BAYN', change: '-0.8%', weight: '4.3%' },
+                { name: 'Deutsche Bank', symbol: 'DBK', change: '+1.2%', weight: '3.9%' }
+            ],
+            'XAUUSD': [
+                { name: 'US Dollar Index', symbol: 'DXY', change: '-0.3%', weight: '45%' },
+                { name: 'US 10Y Treasury', symbol: 'US10Y', change: '+0.2%', weight: '25%' },
+                { name: 'Federal Reserve', symbol: 'FED', change: '0.0%', weight: '20%' },
+                { name: 'EUR/USD', symbol: 'EURUSD', change: '+0.4%', weight: '15%' },
+                { name: 'Oil (WTI)', symbol: 'CL', change: '+1.1%', weight: '12%' },
+                { name: 'S&P 500', symbol: 'SPX', change: '+0.6%', weight: '10%' },
+                { name: 'VIX', symbol: 'VIX', change: '-2.3%', weight: '8%' },
+                { name: 'Silver', symbol: 'XAGUSD', change: '+0.9%', weight: '8%' },
+                { name: 'Bitcoin', symbol: 'BTC', change: '+1.8%', weight: '5%' },
+                { name: 'CPI', symbol: 'CPI', change: '+0.1%', weight: '5%' }
+            ]
+        };
 
-            updateStatus(status) {
-                const statusDot = document.getElementById('statusDot');
-                const statusText = document.getElementById('status');
-                
-                statusDot.className = 'status-dot ' + status;
-                
-                switch(status) {
-                    case 'connected':
-                        statusText.textContent = 'ONLINE';
-                        statusText.style.color = 'var(--accent)';
-                        break;
-                    case 'connecting':
-                        statusText.textContent = 'CONNECTING...';
-                        statusText.style.color = 'var(--warning)';
-                        break;
-                    case 'disconnected':
-                        statusText.textContent = 'OFFLINE';
-                        statusText.style.color = 'var(--danger)';
-                        break;
-                }
-            }
+        // Finnhub WebSocket for real-time data
+        const FINNHUB_KEY = 'ctbo1r9r01ql85pcbbcgctbo1r9r01ql85pcbbd0';
+        
+        const symbolMapping = {
+            'US100': 'OANDA:NAS100_USD',
+            'US30': 'OANDA:US30_USD', 
+            'GER40': 'OANDA:DE30_EUR',
+            'XAUUSD': 'OANDA:XAU_USD'
+        };
 
-            send(data) {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.send(JSON.stringify(data));
-                }
-            }
-
-            async subscribeToCandles(symbol) {
-                this.currentSymbol = symbol;
-                
-                // Unsubscribe from previous
-                if (this.tickSubscription) {
-                    this.send({ forget: this.tickSubscription });
-                }
-
-                // Get historical candles first
-                await this.getHistoricalCandles(symbol);
-                
-                // Subscribe to live ticks
-                this.send({
-                    ticks: symbol,
-                    subscribe: 1
-                });
-            }
-
-            async getHistoricalCandles(symbol) {
-                return new Promise((resolve) => {
-                    const requestId = 'candles_' + Date.now();
-                    
-                    const handler = (data) => {
-                        if (data.req_id === requestId && data.candles) {
-                            this.candleData = data.candles.map(c => ({
-                                time: new Date(c.epoch * 1000),
-                                open: parseFloat(c.open),
-                                high: parseFloat(c.high),
-                                low: parseFloat(c.low),
-                                close: parseFloat(c.close)
-                            }));
-                            
-                            updateChart(this.candleData);
-                            document.getElementById('loadingOverlay').classList.add('hidden');
-                            resolve();
-                        }
-                    };
-                    
-                    this.messageHandlers.push(handler);
-                    
-                    this.send({
-                        ticks_history: symbol,
-                        adjust_start_time: 1,
-                        count: 100,
-                        end: 'latest',
-                        start: Math.floor(Date.now() / 1000) - 3600 * 2, // 2 hours ago
-                        style: 'candles',
-                        granularity: 60, // 1-minute candles
-                        req_id: requestId
-                    });
-                });
-            }
-
-            handleMessage(data) {
-                // Handle tick updates
-                if (data.tick) {
-                    const tick = data.tick;
-                    this.tickSubscription = data.subscription?.id;
-                    
-                    // Update current price
-                    document.getElementById('price').textContent = `$${parseFloat(tick.quote).toFixed(2)}`;
-                    
-                    // Update last candle or create new one
-                    this.updateCandleWithTick({
-                        time: new Date(tick.epoch * 1000),
-                        price: parseFloat(tick.quote)
-                    });
-                }
-                
-                // Handle candles history
-                if (data.candles) {
-                    // Already handled in getHistoricalCandles
-                }
-                
-                // Call additional handlers
-                this.messageHandlers.forEach(handler => handler(data));
-            }
-
-            updateCandleWithTick(tick) {
-                if (this.candleData.length === 0) return;
-                
-                const lastCandle = this.candleData[this.candleData.length - 1];
-                const tickMinute = Math.floor(tick.time.getTime() / 60000);
-                const lastCandleMinute = Math.floor(lastCandle.time.getTime() / 60000);
-                
-                if (tickMinute === lastCandleMinute) {
-                    // Update existing candle
-                    lastCandle.close = tick.price;
-                    lastCandle.high = Math.max(lastCandle.high, tick.price);
-                    lastCandle.low = Math.min(lastCandle.low, tick.price);
-                } else {
-                    // Create new candle
-                    const newCandle = {
-                        time: new Date(tickMinute * 60000),
-                        open: tick.price,
-                        high: tick.price,
-                        low: tick.price,
-                        close: tick.price
-                    };
-                    this.candleData.push(newCandle);
-                    
-                    // Keep only last 100 candles
-                    if (this.candleData.length > 100) {
-                        this.candleData.shift();
-                    }
-                }
-                
-                updateChart(this.candleData);
+        function updateStatus(status) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('status');
+            
+            statusDot.className = 'status-dot ' + status;
+            
+            switch(status) {
+                case 'connected':
+                    statusText.textContent = 'ONLINE';
+                    statusText.style.color = 'var(--accent)';
+                    break;
+                case 'connecting':
+                    statusText.textContent = 'CONNECTING...';
+                    statusText.style.color = 'var(--warning)';
+                    break;
+                case 'disconnected':
+                    statusText.textContent = 'OFFLINE';
+                    statusText.style.color = 'var(--danger)';
+                    break;
             }
         }
 
-        // Initialize
-        const deriv = new DerivWebSocket();
-        deriv.messageHandlers = [];
-        let chartInstance;
+        function connectWebSocket() {
+            updateStatus('connecting');
+            
+            wsConnection = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
+            
+            wsConnection.onopen = () => {
+                console.log('✓ Connected to Finnhub');
+                updateStatus('connected');
+                subscribeToSymbol(currentIndex);
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            };
+            
+            wsConnection.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'trade' && data.data) {
+                    data.data.forEach(trade => {
+                        updatePrice(trade.p);
+                        addToHistory(currentIndex, trade.p);
+                    });
+                }
+            };
+            
+            wsConnection.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus('disconnected');
+            };
+            
+            wsConnection.onclose = () => {
+                console.log('WebSocket closed');
+                updateStatus('disconnected');
+                setTimeout(() => connectWebSocket(), 5000);
+            };
+        }
+
+        function subscribeToSymbol(index) {
+            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                const symbol = symbolMapping[index];
+                wsConnection.send(JSON.stringify({type: 'subscribe', symbol: symbol}));
+                console.log(`Subscribed to ${symbol}`);
+                
+                // Fetch initial historical data
+                fetchHistoricalData(index);
+            }
+        }
+
+        function unsubscribeFromSymbol(index) {
+            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                const symbol = symbolMapping[index];
+                wsConnection.send(JSON.stringify({type: 'unsubscribe', symbol: symbol}));
+            }
+        }
+
+        async function fetchHistoricalData(index) {
+            // Generate simulated historical data for now
+            // In production, you'd fetch from an API
+            const bases = { 'US100': 16500, 'US30': 37000, 'GER40': 17000, 'XAUUSD': 2650 };
+            let price = bases[index];
+            const labels = [];
+            const prices = [];
+
+            for (let i = 50; i >= 0; i--) {
+                const date = new Date(Date.now() - i * 3600000);
+                labels.push(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+                price += (Math.random() - 0.5) * (price * 0.003);
+                prices.push(parseFloat(price.toFixed(2)));
+            }
+
+            priceHistory[index] = prices;
+            updateChart(labels, prices);
+            updatePrice(prices[prices.length - 1]);
+        }
+
+        function addToHistory(index, price) {
+            if (!priceHistory[index]) {
+                priceHistory[index] = [];
+            }
+            
+            priceHistory[index].push(price);
+            
+            // Keep only last 100 points
+            if (priceHistory[index].length > 100) {
+                priceHistory[index].shift();
+            }
+            
+            // Update chart
+            const labels = priceHistory[index].map((_, i) => {
+                const date = new Date(Date.now() - (priceHistory[index].length - i) * 60000);
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            });
+            
+            updateChart(labels, priceHistory[index]);
+        }
 
         function initChart() {
             const ctx = document.getElementById('chart').getContext('2d');
             
             chartInstance = new Chart(ctx, {
-                type: 'candlestick',
+                type: 'line',
                 data: {
+                    labels: [],
                     datasets: [{
-                        label: 'Price',
-                        data: []
+                        label: currentIndex,
+                        data: [],
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                unit: 'minute',
-                                displayFormats: {
-                                    minute: 'HH:mm'
-                                }
-                            },
+                        x: { 
                             grid: { color: '#1e2d4a' },
-                            ticks: {
-                                color: '#7a8aa5',
-                                font: { family: 'JetBrains Mono', size: 10 }
-                            }
+                            ticks: { color: '#7a8aa5', font: { family: 'JetBrains Mono', size: 10 } }
                         },
-                        y: {
+                        y: { 
                             grid: { color: '#1e2d4a' },
-                            ticks: {
-                                color: '#7a8aa5',
-                                font: { family: 'JetBrains Mono', size: 10 }
-                            }
+                            ticks: { color: '#7a8aa5', font: { family: 'JetBrains Mono', size: 10 } }
                         }
-                    }
+                    },
+                    animation: false
                 }
             });
         }
 
-        function updateChart(candleData) {
+        function updateChart(labels, prices) {
             if (!chartInstance) return;
             
-            chartInstance.data.datasets[0].data = candleData.map(c => ({
-                x: c.time.getTime(),
-                o: c.open,
-                h: c.high,
-                l: c.low,
-                c: c.close
-            }));
+            chartInstance.data.labels = labels;
+            chartInstance.data.datasets[0].data = prices;
+            chartInstance.data.datasets[0].label = currentIndex;
+            chartInstance.update('none');
+        }
+
+        function updatePrice(price) {
+            const formatted = currentIndex === 'XAUUSD' 
+                ? `$${price.toFixed(2)}`
+                : `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            document.getElementById('price').textContent = formatted;
+        }
+
+        function selectIndex(index) {
+            unsubscribeFromSymbol(currentIndex);
+            currentIndex = index;
             
-            chartInstance.update('none'); // Update without animation for smooth real-time
+            document.querySelectorAll('.index-btn').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('idx').textContent = index;
+            document.getElementById('comp-idx').textContent = index;
+            
+            if (!priceHistory[index]) {
+                document.getElementById('loadingOverlay').classList.remove('hidden');
+            }
+            
+            subscribeToSymbol(index);
+            loadCompanies(index);
+            
+            if (priceHistory[index]) {
+                const labels = priceHistory[index].map((_, i) => {
+                    const date = new Date(Date.now() - (priceHistory[index].length - i) * 60000);
+                    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                });
+                updateChart(labels, priceHistory[index]);
+                updatePrice(priceHistory[index][priceHistory[index].length - 1]);
+            }
+        }
+
+        function loadCompanies(index) {
+            const companies = companiesData[index] || [];
+            const html = companies.map(c => `
+                <div class="company-card">
+                    <div class="company-header">
+                        <div class="company-name">${c.name}</div>
+                        <div class="company-symbol">${c.symbol}</div>
+                    </div>
+                    <div class="company-data">
+                        <span style="color: var(--muted)">Weight:</span>
+                        <span>${c.weight}</span>
+                    </div>
+                    <div class="company-data">
+                        <span style="color: var(--muted)">Change:</span>
+                        <span style="color: ${parseFloat(c.change) >= 0 ? 'var(--accent)' : 'var(--danger)'}">
+                            ${c.change}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('companies').innerHTML = html;
         }
 
         function switchTab(tabId) {
@@ -594,60 +769,82 @@
             btn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; display: inline-block; margin-right: 10px;"></div> ANALYZING...';
 
             setTimeout(() => {
-                if (deriv.candleData.length === 0) {
-                    alert('No market data available. Please wait for data to load.');
+                if (!priceHistory[currentIndex] || priceHistory[currentIndex].length < 10) {
+                    alert('Insufficient market data. Please wait for more data.');
                     btn.disabled = false;
                     btn.innerHTML = '🎯 GENERATE SIGNAL';
                     return;
                 }
 
-                const lastCandle = deriv.candleData[deriv.candleData.length - 1];
-                const currentPrice = lastCandle.close;
+                const data = priceHistory[currentIndex];
+                const currentPrice = data[data.length - 1];
+                const companies = companiesData[currentIndex] || [];
                 
-                // Simple trend analysis
-                const recentCandles = deriv.candleData.slice(-10);
-                const avgClose = recentCandles.reduce((sum, c) => sum + c.close, 0) / recentCandles.length;
-                const direction = currentPrice > avgClose ? 'BUY' : 'SELL';
-                
-                const multiplier = 0.002;
-                const base = currentPrice * multiplier;
-                
-                let entry, tp1, tp2, sl;
-                if (direction === 'BUY') {
-                    entry = currentPrice - (base * 0.1);
-                    tp1 = entry + base;
-                    tp2 = entry + (base * 2);
-                    sl = entry - (base * 0.5);
+                let direction, entry, tp1, tp2, sl, pips;
+
+                // Use SMC analysis for GOLD
+                if (currentIndex === 'XAUUSD' && typeof analyzeSMC === 'function') {
+                    const candles = data.slice(-50).map((price, i) => ({
+                        open: i > 0 ? data[i - 1] : price,
+                        high: price * 1.002,
+                        low: price * 0.998,
+                        close: price,
+                        time: Date.now() - (50 - i) * 3600000
+                    }));
+
+                    const smc = analyzeSMC(candles);
+                    displaySMC(smc);
+                    
+                    direction = smc.bias === 'BULLISH' ? 'BUY' : smc.bias === 'BEARISH' ? 'SELL' : 'BUY';
                 } else {
-                    entry = currentPrice + (base * 0.1);
-                    tp1 = entry - base;
-                    tp2 = entry - (base * 2);
-                    sl = entry + (base * 0.5);
+                    // Use company sentiment for indices (datascraper.py logic)
+                    const bullish = companies.filter(c => parseFloat(c.change) > 0).length;
+                    direction = bullish > companies.length / 2 ? 'BUY' : 'SELL';
                 }
-                
+
+                const mult = currentIndex === 'XAUUSD' ? 0.002 : 0.003;
+                const base = currentPrice * mult * 2;
+
+                if (direction === 'BUY') {
+                    entry = currentPrice - (base * 0.15);
+                    tp1 = entry + base;
+                    tp2 = entry + (base * 1.8);
+                    sl = entry - (base * 0.5);
+                    pips = currentIndex === 'XAUUSD' ? Math.round((tp1 - entry) * 100) : Math.round((tp1 - entry) * 10);
+                } else {
+                    entry = currentPrice + (base * 0.15);
+                    tp1 = entry - base;
+                    tp2 = entry - (base * 1.8);
+                    sl = entry + (base * 0.5);
+                    pips = currentIndex === 'XAUUSD' ? Math.round((entry - tp1) * 100) : Math.round((entry - tp1) * 10);
+                }
+
                 const signal = {
-                    symbol: deriv.currentSymbol,
+                    index: currentIndex,
+                    timestamp: new Date().toISOString(),
                     direction,
                     entry: entry.toFixed(2),
                     tp1: tp1.toFixed(2),
                     tp2: tp2.toFixed(2),
                     sl: sl.toFixed(2),
+                    pips,
                     currentPrice: currentPrice.toFixed(2)
                 };
-                
+
                 displaySignal(signal);
-                
+                saveSignal(signal);
+
                 btn.disabled = false;
                 btn.innerHTML = '🎯 GENERATE SIGNAL';
-            }, 1500);
+            }, 2000);
         }
 
         function displaySignal(signal) {
             const html = `
                 <div class="signal-box">
                     <div class="signal-row">
-                        <span class="signal-label">SYMBOL</span>
-                        <span class="signal-value">${signal.symbol}</span>
+                        <span class="signal-label">ASSET</span>
+                        <span class="signal-value">${signal.index}</span>
                     </div>
                     <div class="signal-row">
                         <span class="signal-label">PRICE</span>
@@ -673,36 +870,118 @@
                         <span class="signal-label">SL</span>
                         <span class="signal-value">${signal.sl}</span>
                     </div>
+                    <div class="signal-row">
+                        <span class="signal-label">PIPS</span>
+                        <span class="signal-value">${signal.pips}</span>
+                    </div>
                 </div>
             `;
             document.getElementById('signal').innerHTML = html;
         }
 
-        // Event listeners for symbol buttons
-        document.querySelectorAll('.index-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.index-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                
-                const symbol = this.dataset.symbol;
-                document.getElementById('idx').textContent = this.textContent;
-                document.getElementById('loadingOverlay').classList.remove('hidden');
-                
-                deriv.subscribeToCandles(symbol);
-            });
-        });
+        function displaySMC(smc) {
+            const html = `
+                <div class="smc-card">
+                    <div class="smc-card-title">📊 MARKET BIAS</div>
+                    <div style="font-size: 2em; font-weight: 700; color: ${smc.bias === 'BULLISH' ? 'var(--accent)' : smc.bias === 'BEARISH' ? 'var(--danger)' : 'var(--muted)'}; padding: 20px 0;">
+                        ${smc.bias}
+                    </div>
+                </div>
+                <div class="smc-card">
+                    <div class="smc-card-title">🎯 MM PHASE</div>
+                    <div style="font-size: 1.5em; font-weight: 700; color: var(--accent); padding: 20px 0;">
+                        ${smc.phase}
+                    </div>
+                </div>
+                <div class="smc-card">
+                    <div class="smc-card-title">📈 BULLISH SCORE</div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--accent); padding: 20px 0;">
+                        ${smc.bullishScore}
+                    </div>
+                </div>
+                <div class="smc-card">
+                    <div class="smc-card-title">📉 BEARISH SCORE</div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--danger); padding: 20px 0;">
+                        ${smc.bearishScore}
+                    </div>
+                </div>
+                <div class="smc-card">
+                    <div class="smc-card-title">🔄 ORDER BLOCKS</div>
+                    <div style="font-size: 1.5em; font-weight: 700; color: var(--text); padding: 20px 0;">
+                        ${smc.orderBlocks || 0}
+                    </div>
+                </div>
+                <div class="smc-card">
+                    <div class="smc-card-title">⚡ FAIR VALUE GAPS</div>
+                    <div style="font-size: 1.5em; font-weight: 700; color: var(--text); padding: 20px 0;">
+                        ${smc.fvg || 0}
+                    </div>
+                </div>
+            `;
+            document.getElementById('smc').innerHTML = html;
+        }
 
-        // Initialize on load
-        window.addEventListener('load', async () => {
-            initChart();
-            
+        function saveSignal(signal) {
             try {
-                await deriv.connect();
-                await deriv.subscribeToCandles('R_100');
+                database.ref('signals').push(signal);
+                loadHistory();
             } catch (error) {
-                console.error('Failed to connect:', error);
-                document.querySelector('.loading-text').textContent = 'Connection failed. Retrying...';
+                console.error('Error saving:', error);
             }
+        }
+
+        function loadHistory() {
+            try {
+                database.ref('signals').orderByChild('timestamp').limitToLast(10).once('value').then(snapshot => {
+                    const signals = [];
+                    snapshot.forEach(child => {
+                        signals.push({ id: child.key, ...child.val() });
+                    });
+                    
+                    signals.reverse();
+                    
+                    if (signals.length === 0) {
+                        document.getElementById('history').innerHTML = 
+                            '<p style="text-align: center; color: var(--muted); padding: 20px;">No signals yet</p>';
+                        return;
+                    }
+                    
+                    const html = signals.map(s => `
+                        <div class="history-item">
+                            <button class="btn-del" onclick="deleteSignal('${s.id}')">DEL</button>
+                            <div class="history-header">
+                                <span class="history-index">${s.index}</span>
+                                <span class="history-time">${new Date(s.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div style="font-size: 0.9em; color: var(--muted);">
+                                ${s.direction} | Entry: ${s.entry} | TP1: ${s.tp1} | SL: ${s.sl}
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('history').innerHTML = html;
+                });
+            } catch (error) {
+                console.error('Error loading:', error);
+            }
+        }
+
+        function deleteSignal(id) {
+            if (confirm('Delete this signal?')) {
+                database.ref(`signals/${id}`).remove().then(() => {
+                    loadHistory();
+                }).catch(err => {
+                    console.error('Delete error:', err);
+                    alert('Failed to delete signal');
+                });
+            }
+        }
+
+        window.addEventListener('load', () => {
+            initChart();
+            loadCompanies('US100');
+            loadHistory();
+            connectWebSocket();
         });
     </script>
 </body>
