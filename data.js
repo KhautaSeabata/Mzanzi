@@ -2,30 +2,46 @@
 // TRADING TERMINAL - REAL-TIME DATA ENGINE
 // ============================================================================
 
-// Symbol Configuration
+// Symbol Configuration with Multiple Data Sources
 const SYMBOLS = {
     US30: {
         name: 'US30',
         description: 'Dow Jones Industrial Average',
-        apiSymbol: 'WLDUS30',
+        sources: [
+            { provider: 'deriv', symbol: 'WLDUS30' },
+            { provider: 'deriv', symbol: '1HZ100V' },
+            { provider: 'deriv', symbol: 'R_100' }
+        ],
         basePrice: 38000
     },
     US100: {
         name: 'US100',
         description: 'NASDAQ 100',
-        apiSymbol: 'WLDNAS100',
+        sources: [
+            { provider: 'deriv', symbol: 'WLDNAS100' },
+            { provider: 'deriv', symbol: '1HZ100V' },
+            { provider: 'deriv', symbol: 'R_100' }
+        ],
         basePrice: 16500
     },
     GER40: {
         name: 'GER40',
         description: 'Germany 40 (DAX)',
-        apiSymbol: 'WLDGDAXI',
+        sources: [
+            { provider: 'deriv', symbol: 'WLDGDAXI' },
+            { provider: 'deriv', symbol: '1HZ100V' },
+            { provider: 'deriv', symbol: 'R_100' }
+        ],
         basePrice: 17500
     },
     XAUUSD: {
         name: 'XAUUSD',
         description: 'Gold vs USD',
-        apiSymbol: 'frxGOLD',
+        sources: [
+            { provider: 'deriv', symbol: 'frxGOLD' },
+            { provider: 'deriv', symbol: 'frxXAUUSD' },
+            { provider: 'deriv', symbol: '1HZ100V' }
+        ],
         basePrice: 2650
     }
 };
@@ -34,11 +50,11 @@ const SYMBOLS = {
 let canvas, ctx;
 let chartData = [];
 let currentSymbol = 'US30';
-let currentTimeframe = 300; // 5 minutes in seconds
+let currentTimeframe = 300;
 let ws = null;
 let isConnected = false;
-let retryCount = 0;
-let maxRetries = 3;
+let currentSourceIndex = 0;
+let isLoadingAlternative = false;
 
 // Chart Settings
 let zoom = 1.0;
@@ -78,7 +94,7 @@ function resizeCanvas() {
 }
 
 // ============================================================================
-// WEBSOCKET CONNECTION
+// WEBSOCKET CONNECTION WITH MULTI-SOURCE SUPPORT
 // ============================================================================
 function connectWebSocket() {
     updateConnectionStatus(false);
@@ -88,7 +104,7 @@ function connectWebSocket() {
         ws = null;
     }
     
-    console.log(`Connecting to Deriv WebSocket... (Attempt ${retryCount + 1}/${maxRetries})`);
+    console.log(`Connecting to Deriv WebSocket (Source ${currentSourceIndex + 1})...`);
     
     try {
         ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
@@ -96,7 +112,6 @@ function connectWebSocket() {
         ws.onopen = () => {
             console.log('✓ Connected to Deriv WebSocket');
             updateConnectionStatus(true);
-            retryCount = 0; // Reset retry count on success
             requestCandles();
         };
         
@@ -104,21 +119,21 @@ function connectWebSocket() {
             const data = JSON.parse(event.data);
             
             if (data.error) {
-                console.error('WebSocket Error:', data.error);
-                
-                if (retryCount < maxRetries) {
-                    retryCount++;
-                    handleError(data.error.message);
-                } else {
-                    alert(`Failed to load data after ${maxRetries} attempts. Please:\n1. Check your internet connection\n2. Try a different symbol\n3. Refresh the page`);
-                    hideLoading();
-                }
+                console.error('API Error:', data.error.message);
+                handleDataError(data.error.message);
                 return;
             }
             
             if (data.candles) {
-                console.log(`✓ Received ${data.candles.length} candles for ${currentSymbol}`);
-                retryCount = 0; // Reset on successful data
+                if (data.candles.length === 0) {
+                    console.warn('Received empty candles array');
+                    handleDataError('No data available for this symbol');
+                    return;
+                }
+                
+                console.log(`✓ Received ${data.candles.length} candles from source ${currentSourceIndex + 1}`);
+                currentSourceIndex = 0; // Reset on success
+                isLoadingAlternative = false;
                 processCandles(data.candles);
                 hideLoading();
                 subscribeTicks();
@@ -138,26 +153,31 @@ function connectWebSocket() {
             console.log('WebSocket closed');
             updateConnectionStatus(false);
             
-            // Only auto-reconnect if we're not at max retries
-            if (retryCount < maxRetries) {
-                console.log('Reconnecting in 3 seconds...');
-                setTimeout(connectWebSocket, 3000);
+            // Auto-reconnect after 3 seconds if we have data
+            if (chartData.length > 0) {
+                setTimeout(() => {
+                    if (!isConnected) {
+                        console.log('Attempting to reconnect...');
+                        connectWebSocket();
+                    }
+                }, 3000);
             }
         };
+        
     } catch (error) {
         console.error('Failed to create WebSocket:', error);
-        alert('Connection failed. Please check your internet connection and refresh the page.');
-        hideLoading();
+        updateConnectionStatus(false);
     }
 }
 
 function requestCandles() {
     const symbol = SYMBOLS[currentSymbol];
+    const source = symbol.sources[currentSourceIndex];
     
-    console.log(`Requesting candles: ${symbol.apiSymbol}, timeframe: ${currentTimeframe}s`);
+    console.log(`Requesting: ${source.symbol} (${source.provider}), TF: ${currentTimeframe}s`);
     
     ws.send(JSON.stringify({
-        ticks_history: symbol.apiSymbol,
+        ticks_history: source.symbol,
         adjust_start_time: 1,
         count: 500,
         end: 'latest',
@@ -169,13 +189,51 @@ function requestCandles() {
 
 function subscribeTicks() {
     const symbol = SYMBOLS[currentSymbol];
+    const source = symbol.sources[currentSourceIndex];
     
-    console.log(`Subscribing to ticks: ${symbol.apiSymbol}`);
+    console.log(`Subscribing to ticks: ${source.symbol}`);
     
     ws.send(JSON.stringify({
-        ticks: symbol.apiSymbol,
+        ticks: source.symbol,
         subscribe: 1
     }));
+}
+
+function handleDataError(message) {
+    if (isLoadingAlternative) return;
+    
+    const symbol = SYMBOLS[currentSymbol];
+    
+    // Try next source
+    if (currentSourceIndex < symbol.sources.length - 1) {
+        currentSourceIndex++;
+        isLoadingAlternative = true;
+        
+        console.log(`Trying alternative source ${currentSourceIndex + 1}/${symbol.sources.length}`);
+        
+        // Close current connection and reconnect
+        if (ws) {
+            ws.close();
+        }
+        
+        setTimeout(() => {
+            connectWebSocket();
+        }, 1000);
+    } else {
+        // All sources failed
+        currentSourceIndex = 0;
+        isLoadingAlternative = false;
+        hideLoading();
+        
+        alert(
+            `Unable to load ${currentSymbol} data.\n\n` +
+            `Tried ${symbol.sources.length} different sources.\n\n` +
+            `Please:\n` +
+            `• Check your internet connection\n` +
+            `• Try a different symbol\n` +
+            `• Refresh the page`
+        );
+    }
 }
 
 function processCandles(candles) {
@@ -240,46 +298,6 @@ function updateOHLC(ohlc) {
     updatePriceDisplay();
 }
 
-function handleError(message) {
-    console.error('API Error:', message);
-    
-    // Try alternative symbols based on current selection
-    const alternatives = getAlternativeSymbols(currentSymbol);
-    
-    if (alternatives.length > 0) {
-        console.log(`Trying alternative symbol: ${alternatives[0]}`);
-        tryAlternativeSymbol(alternatives[0]);
-    } else {
-        alert(`Unable to load ${currentSymbol} data. Please try another symbol.`);
-        hideLoading();
-    }
-}
-
-function getAlternativeSymbols(symbol) {
-    const alternatives = {
-        'US30': ['1HZ100V', 'R_100'],     // Volatility indices as fallback
-        'US100': ['1HZ100V', 'R_100'],
-        'GER40': ['1HZ100V', 'R_100'],
-        'XAUUSD': ['frxXAUUSD', '1HZ100V'] // Try forex gold, then volatility
-    };
-    
-    return alternatives[symbol] || [];
-}
-
-function tryAlternativeSymbol(apiSymbol) {
-    console.log(`Requesting alternative symbol: ${apiSymbol}`);
-    
-    ws.send(JSON.stringify({
-        ticks_history: apiSymbol,
-        adjust_start_time: 1,
-        count: 500,
-        end: 'latest',
-        start: 1,
-        style: 'candles',
-        granularity: currentTimeframe
-    }));
-}
-
 // ============================================================================
 // CHART DRAWING
 // ============================================================================
@@ -338,7 +356,6 @@ function drawGrid(minPrice, maxPrice, priceRange, chartWidth, chartHeight) {
     ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 1;
     
-    // Horizontal grid lines
     for (let i = 0; i <= 5; i++) {
         const y = chartPadding.top + (chartHeight * i / 5);
         ctx.beginPath();
@@ -379,16 +396,15 @@ function drawPriceScale(minPrice, maxPrice, priceRange, width, height) {
     
     for (let i = 0; i <= 5; i++) {
         const price = minPrice + (priceRange * i / 5);
-        const y = chartPadding.top + height - chartPadding.bottom - chartPadding.top - ((height - chartPadding.top - chartPadding.bottom) * i / 5);
+        const y = chartPadding.top + height - chartPadding.bottom - chartPadding.top - 
+                  ((height - chartPadding.top - chartPadding.bottom) * i / 5);
         
         const text = price.toFixed(2);
         const textWidth = ctx.measureText(text).width;
         
-        // Background
         ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(width - chartPadding.right + 2, y - 8, textWidth + 8, 16);
         
-        // Text
         ctx.fillStyle = '#888';
         ctx.fillText(text, width - chartPadding.right + 6, y + 4);
     }
@@ -396,7 +412,8 @@ function drawPriceScale(minPrice, maxPrice, priceRange, width, height) {
     // Current price line
     if (chartData.length > 0) {
         const currentPrice = chartData[chartData.length - 1].c;
-        const y = chartPadding.top + (maxPrice - currentPrice) * (height - chartPadding.top - chartPadding.bottom) / priceRange;
+        const chartH = height - chartPadding.top - chartPadding.bottom;
+        const y = chartPadding.top + (maxPrice - currentPrice) * chartH / priceRange;
         
         ctx.strokeStyle = '#00ff88';
         ctx.lineWidth = 1;
@@ -407,7 +424,6 @@ function drawPriceScale(minPrice, maxPrice, priceRange, width, height) {
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // Price label
         const text = currentPrice.toFixed(2);
         const textWidth = ctx.measureText(text).width;
         
@@ -450,7 +466,6 @@ function drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth) 
     const maxX = chartPadding.left + chartWidth;
     if (crosshairX > maxX) return;
     
-    // Draw lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
@@ -467,7 +482,6 @@ function drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth) 
     
     ctx.setLineDash([]);
     
-    // Find candle at crosshair
     const candleIndex = Math.floor((crosshairX - chartPadding.left) / (chartWidth / visibleData.length));
     if (candleIndex >= 0 && candleIndex < visibleData.length) {
         const candle = visibleData[candleIndex];
@@ -522,7 +536,7 @@ function handleTouchMove(e) {
         drawChart();
     } else if (isDragging) {
         const deltaX = touch.clientX - lastTouchX;
-        scroll += Math.round(deltaX * 0.5); // Natural scrolling (not inverse)
+        scroll += Math.round(deltaX * 0.5); // Natural scrolling
         scroll = Math.max(0, Math.min(scroll, chartData.length - 10));
         lastTouchX = touch.clientX;
         drawChart();
@@ -540,11 +554,14 @@ window.changeSymbol = function() {
     currentSymbol = document.getElementById('symbolSelector').value;
     chartData = [];
     scroll = 0;
-    retryCount = 0; // Reset retry count for new symbol
+    currentSourceIndex = 0;
+    isLoadingAlternative = false;
     
     showLoading();
     
     if (isConnected) {
+        // Unsubscribe from old symbol
+        ws.send(JSON.stringify({ forget_all: 'ticks' }));
         requestCandles();
     } else {
         connectWebSocket();
@@ -555,9 +572,7 @@ window.changeTimeframe = function(tf) {
     currentTimeframe = tf;
     chartData = [];
     scroll = 0;
-    retryCount = 0; // Reset retry count for new timeframe
     
-    // Update active button
     document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
@@ -639,4 +654,4 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-console.log('Trading Terminal Loaded');
+console.log('Trading Terminal Loaded - Multi-Source Support Enabled');
