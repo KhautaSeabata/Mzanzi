@@ -1,10 +1,11 @@
 // ============================================================================
-// GOLD TRADING TERMINAL - DERIV DATA ONLY
+// GOLD TRADING TERMINAL - DERIV WEBSOCKET ENGINE
+// Based on proven working code from analysis.js
 // ============================================================================
 
-// Gold Configuration
-const GOLD_SYMBOL = 'frxGOLD'; // Deriv Gold symbol
-const BACKUP_SYMBOL = 'frxXAUUSD'; // Backup if primary fails
+// Gold Symbol Configuration (using exact symbols from working code)
+const GOLD_SYMBOL = 'frxXAUUSD'; // Primary - matches working code
+const BACKUP_SYMBOL = 'frxGOLD';   // Backup
 
 // Global State
 let canvas, ctx;
@@ -14,19 +15,20 @@ let ws = null;
 let isConnected = false;
 let useBackupSymbol = false;
 
-// Chart Settings
-let zoom = 1.0;
+// Chart Settings (match working code exactly)
+let zoom = 80;
 let scroll = 0;
 let crosshairEnabled = false;
 let crosshairX = 0;
 let crosshairY = 0;
 let isDragging = false;
 let lastTouchX = 0;
+let autoScroll = true;
 
 const chartPadding = {
-    top: 40,
-    right: 70,
-    bottom: 30,
+    top: 20,
+    right: 60,
+    bottom: 20,
     left: 10
 };
 
@@ -40,37 +42,12 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🏅 Gold Trading Terminal Starting...');
     console.log(`📊 Symbol: ${GOLD_SYMBOL}`);
     
-    // Check internet connection
-    if (!navigator.onLine) {
-        alert('No internet connection detected.\n\nPlease connect to the internet and refresh the page.');
-        hideLoading();
-        return;
-    }
-    
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    
-    // Listen for online/offline events
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
     
     setupInteraction();
     connectWebSocket();
 });
-
-function handleOnline() {
-    console.log('🌐 Internet connection restored');
-    if (!isConnected && chartData.length === 0) {
-        alert('Connection restored! Reconnecting...');
-        connectWebSocket();
-    }
-}
-
-function handleOffline() {
-    console.log('📡 Internet connection lost');
-    updateConnectionStatus(false);
-    alert('Internet connection lost.\n\nPlease check your connection.');
-}
 
 function resizeCanvas() {
     const container = canvas.parentElement;
@@ -80,184 +57,127 @@ function resizeCanvas() {
 }
 
 // ============================================================================
-// WEBSOCKET CONNECTION - DERIV ONLY
+// WEBSOCKET CONNECTION - EXACT COPY FROM WORKING CODE
 // ============================================================================
 function connectWebSocket() {
     updateConnectionStatus(false);
     
-    if (ws) {
-        ws.close();
-        ws = null;
-    }
+    if (ws) ws.close();
     
     console.log('🔌 Connecting to Deriv WebSocket...');
     showLoading();
     
-    try {
-        ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+    ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+    
+    ws.onopen = () => {
+        console.log('✅ Connected to Deriv');
+        updateConnectionStatus(true);
         
-        // Set timeout for connection
-        const connectionTimeout = setTimeout(() => {
-            if (!isConnected) {
-                console.error('❌ Connection timeout');
+        const apiSymbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
+        console.log(`📊 Requesting: ${apiSymbol}`);
+        
+        // Subscribe to ticks (exact same as working code)
+        ws.send(JSON.stringify({ 
+            ticks: apiSymbol, 
+            subscribe: 1 
+        }));
+        
+        // Request historical candles (exact same as working code)
+        ws.send(JSON.stringify({
+            ticks_history: apiSymbol,
+            count: 1000,
+            end: 'latest',
+            style: 'candles',
+            granularity: currentTimeframe
+        }));
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.error) {
+            console.error('❌ Deriv Error:', data.error.message);
+            
+            // Try backup symbol if primary fails
+            if (!useBackupSymbol) {
+                console.log('⚠️ Trying backup symbol:', BACKUP_SYMBOL);
+                useBackupSymbol = true;
                 ws.close();
-                retryConnection();
-            }
-        }, 10000); // 10 second timeout
-        
-        ws.onopen = () => {
-            clearTimeout(connectionTimeout);
-            console.log('✅ Connected to Deriv');
-            updateConnectionStatus(true);
-            requestCandles();
-        };
-        
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            if (data.error) {
-                console.error('❌ Deriv Error:', data.error.message);
-                
-                // Try backup symbol if primary fails
-                if (!useBackupSymbol && data.error.code !== 'RateLimit') {
-                    console.log('⚠️ Trying backup symbol:', BACKUP_SYMBOL);
-                    useBackupSymbol = true;
-                    setTimeout(() => requestCandles(), 1000);
-                } else {
-                    hideLoading();
-                    alert('Unable to load Gold data from Deriv.\n\nError: ' + data.error.message + '\n\nPlease:\n• Check your internet connection\n• Wait a moment and refresh\n• Try again later');
-                }
-                return;
-            }
-            
-            if (data.candles) {
-                if (data.candles.length === 0) {
-                    console.warn('⚠️ No candles received');
-                    if (!useBackupSymbol) {
-                        useBackupSymbol = true;
-                        requestCandles();
-                    }
-                    return;
-                }
-                
-                console.log(`✅ Received ${data.candles.length} candles`);
-                processCandles(data.candles);
-                hideLoading();
-                subscribeTicks();
-            } else if (data.tick) {
-                updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
-            } else if (data.ohlc) {
-                updateOHLC(data.ohlc);
-            }
-        };
-        
-        ws.onerror = (error) => {
-            clearTimeout(connectionTimeout);
-            console.error('❌ WebSocket Error:', error);
-            updateConnectionStatus(false);
-            hideLoading();
-            retryConnection();
-        };
-        
-        ws.onclose = (event) => {
-            clearTimeout(connectionTimeout);
-            console.log('🔌 WebSocket closed', event.code, event.reason);
-            updateConnectionStatus(false);
-            
-            // Auto-reconnect after 3 seconds if we have data
-            if (chartData.length > 0) {
-                setTimeout(() => {
-                    if (!isConnected) {
-                        console.log('🔄 Attempting to reconnect...');
-                        connectWebSocket();
-                    }
-                }, 3000);
+                setTimeout(() => connectWebSocket(), 1000);
             } else {
-                retryConnection();
+                hideLoading();
+                alert(`Unable to load Gold data.\n\nError: ${data.error.message}\n\nPlease refresh the page.`);
             }
-        };
+            return;
+        }
         
-    } catch (error) {
-        console.error('❌ Failed to create WebSocket:', error);
-        hideLoading();
-        alert('Connection failed.\n\nError: ' + error.message + '\n\nPlease check your internet and refresh the page.');
-    }
-}
+        // Handle candles response (same as working code)
+        if (data.candles) {
+            console.log(`✅ Received ${data.candles.length} candles`);
+            chartData = data.candles.map(c => ({
+                x: c.epoch * 1000,
+                o: parseFloat(c.open),
+                h: parseFloat(c.high),
+                l: parseFloat(c.low),
+                c: parseFloat(c.close)
+            }));
+            drawChart();
+            updatePriceDisplay();
+            hideLoading();
+        } 
+        // Handle tick updates (same as working code)
+        else if (data.tick) {
+            updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
+        } 
+        // Handle OHLC updates (same as working code)
+        else if (data.ohlc) {
+            const candle = data.ohlc;
+            updateCandle({
+                x: candle.epoch * 1000,
+                o: parseFloat(candle.open),
+                h: parseFloat(candle.high),
+                l: parseFloat(candle.low),
+                c: parseFloat(candle.close)
+            });
+        }
+    };
 
-let retryAttempts = 0;
-const maxRetries = 3;
+    ws.onerror = (error) => {
+        console.error('❌ WebSocket Error:', error);
+        updateConnectionStatus(false);
+    };
 
-function retryConnection() {
-    if (retryAttempts < maxRetries) {
-        retryAttempts++;
-        const delay = retryAttempts * 2000; // 2s, 4s, 6s
-        console.log(`🔄 Retry ${retryAttempts}/${maxRetries} in ${delay/1000}s...`);
+    ws.onclose = () => {
+        console.log('🔌 WebSocket closed');
+        updateConnectionStatus(false);
         
-        setTimeout(() => {
-            connectWebSocket();
-        }, delay);
-    } else {
-        hideLoading();
-        alert('Unable to connect to Deriv after ' + maxRetries + ' attempts.\n\nPlease:\n• Check your internet connection\n• Disable any VPN or proxy\n• Refresh the page\n• Try again later');
-        retryAttempts = 0;
-    }
+        // Auto-reconnect if we have data
+        if (chartData.length > 0) {
+            setTimeout(() => {
+                if (!isConnected) {
+                    console.log('🔄 Reconnecting...');
+                    connectWebSocket();
+                }
+            }, 3000);
+        }
+    };
 }
 
-function requestCandles() {
-    const symbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
-    
-    console.log(`📊 Requesting candles: ${symbol}, Timeframe: ${currentTimeframe}s`);
-    
-    ws.send(JSON.stringify({
-        ticks_history: symbol,
-        adjust_start_time: 1,
-        count: 500,
-        end: 'latest',
-        start: 1,
-        style: 'candles',
-        granularity: currentTimeframe
-    }));
-}
-
-function subscribeTicks() {
-    const symbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
-    
-    console.log(`📡 Subscribing to live ticks: ${symbol}`);
-    
-    ws.send(JSON.stringify({
-        ticks: symbol,
-        subscribe: 1
-    }));
-}
-
-function processCandles(candles) {
-    chartData = candles.map(c => ({
-        time: c.epoch * 1000,
-        o: parseFloat(c.open),
-        h: parseFloat(c.high),
-        l: parseFloat(c.low),
-        c: parseFloat(c.close)
-    }));
-    
-    retryAttempts = 0; // Reset retry counter on success
-    console.log(`✅ Chart data loaded: ${chartData.length} candles`);
-    drawChart();
-    updatePriceDisplay();
-}
-
+// ============================================================================
+// DATA UPDATES - EXACT COPY FROM WORKING CODE
+// ============================================================================
 function updateTick(price, time) {
     const candleStart = Math.floor(time / (currentTimeframe * 1000)) * (currentTimeframe * 1000);
     
-    if (!chartData.length || candleStart > chartData[chartData.length - 1].time) {
+    if (!chartData.length || candleStart > chartData[chartData.length - 1].x) {
         // New candle
-        chartData.push({
-            time: candleStart,
-            o: price,
-            h: price,
-            l: price,
-            c: price
+        chartData.push({ 
+            x: candleStart, 
+            o: price, 
+            h: price, 
+            l: price, 
+            c: price 
         });
-        
         if (chartData.length > 1000) chartData.shift();
     } else {
         // Update current candle
@@ -271,19 +191,11 @@ function updateTick(price, time) {
     updatePriceDisplay();
 }
 
-function updateOHLC(ohlc) {
-    const candle = {
-        time: ohlc.epoch * 1000,
-        o: parseFloat(ohlc.open),
-        h: parseFloat(ohlc.high),
-        l: parseFloat(ohlc.low),
-        c: parseFloat(ohlc.close)
-    };
-    
+function updateCandle(candle) {
     if (!chartData.length) return;
     
     const last = chartData[chartData.length - 1];
-    if (candle.time === last.time) {
+    if (candle.x === last.x) {
         chartData[chartData.length - 1] = candle;
     } else {
         chartData.push(candle);
@@ -295,171 +207,138 @@ function updateOHLC(ohlc) {
 }
 
 // ============================================================================
-// CHART DRAWING
+// CHART DRAWING - EXACT COPY FROM WORKING CODE
 // ============================================================================
 function drawChart() {
     if (!chartData.length) return;
     
-    const width = canvas.width;
-    const height = canvas.height;
-    const chartWidth = width - chartPadding.left - chartPadding.right;
-    const chartHeight = height - chartPadding.top - chartPadding.bottom;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Clear canvas
-    ctx.fillStyle = '#0e0e0e';
-    ctx.fillRect(0, 0, width, height);
+    const padding = chartPadding;
+    const chartW = canvas.width - padding.left - padding.right;
+    const chartH = canvas.height - padding.top - padding.bottom;
     
-    // Calculate visible candles (80% width, 20% right padding)
-    const effectiveWidth = chartWidth * 0.8;
-    const visibleCandles = Math.floor(effectiveWidth / (4 * zoom + 2));
-    const startIdx = Math.max(0, chartData.length - visibleCandles - scroll);
-    const endIdx = Math.min(chartData.length, startIdx + visibleCandles);
-    const visibleData = chartData.slice(startIdx, endIdx);
+    const candlesPerScreen = Math.floor(zoom);
+    if (autoScroll) {
+        scroll = Math.max(0, chartData.length - candlesPerScreen);
+    }
     
-    if (visibleData.length === 0) return;
+    const visible = chartData.slice(scroll, scroll + candlesPerScreen);
+    if (!visible.length) return;
     
-    // Calculate price range
-    const prices = visibleData.flatMap(d => [d.h, d.l]);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice;
-    const priceScale = chartHeight / priceRange;
+    const prices = visible.flatMap(c => [c.h, c.l]);
+    const maxP = Math.max(...prices);
+    const minP = Math.min(...prices);
+    const range = maxP - minP || 0.01;
+    const buffer = range * 0.05;
+    
+    const priceToY = (price) => {
+        return padding.top + chartH - ((price - (minP - buffer)) / (range + 2 * buffer)) * chartH;
+    };
+    
+    const candleW = chartW / candlesPerScreen;
+    const wickW = Math.max(1, candleW * 0.1);
+    const bodyW = Math.max(2, candleW * 0.8);
     
     // Draw grid
-    drawGrid(minPrice, maxPrice, priceRange, chartWidth, chartHeight);
+    drawGrid(minP - buffer, maxP + buffer, chartH, padding, chartW);
     
     // Draw candles
-    const candleWidth = Math.max(2, (effectiveWidth / visibleData.length) - 2);
-    
-    visibleData.forEach((candle, i) => {
-        const x = chartPadding.left + (i * (effectiveWidth / visibleData.length));
-        drawCandle(candle, x, candleWidth, minPrice, maxPrice, priceScale);
+    visible.forEach((candle, i) => {
+        const x = padding.left + i * candleW + candleW / 2;
+        const isGreen = candle.c >= candle.o;
+        
+        // Draw wick
+        ctx.strokeStyle = isGreen ? '#00ff88' : '#ff3366';
+        ctx.lineWidth = wickW;
+        ctx.beginPath();
+        ctx.moveTo(x, priceToY(candle.h));
+        ctx.lineTo(x, priceToY(candle.l));
+        ctx.stroke();
+        
+        // Draw body
+        const yTop = priceToY(Math.max(candle.o, candle.c));
+        const yBottom = priceToY(Math.min(candle.o, candle.c));
+        const bodyHeight = Math.max(1, yBottom - yTop);
+        
+        ctx.fillStyle = isGreen ? '#00ff88' : '#ff3366';
+        ctx.fillRect(x - bodyW / 2, yTop, bodyW, bodyHeight);
     });
     
     // Draw price scale
-    drawPriceScale(minPrice, maxPrice, priceRange, width, height);
-    
-    // Draw time scale
-    drawTimeScale(visibleData, effectiveWidth, height);
+    drawPriceScale(minP - buffer, maxP + buffer, chartH, padding);
     
     // Draw crosshair
     if (crosshairEnabled) {
-        drawCrosshair(minPrice, maxPrice, priceScale, visibleData, effectiveWidth);
+        drawCrosshair(minP - buffer, maxP + buffer, visible, candleW, padding, chartW);
     }
 }
 
-function drawGrid(minPrice, maxPrice, priceRange, chartWidth, chartHeight) {
-    ctx.strokeStyle = '#1a1a1a';
+function drawGrid(minPrice, maxPrice, height, padding, width) {
+    const steps = 6;
+    const priceStep = (maxPrice - minPrice) / steps;
+    
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     
-    for (let i = 0; i <= 5; i++) {
-        const y = chartPadding.top + (chartHeight * i / 5);
+    for (let i = 0; i <= steps; i++) {
+        const y = padding.top + height - (i / steps) * height;
+        
         ctx.beginPath();
-        ctx.moveTo(chartPadding.left, y);
-        ctx.lineTo(chartPadding.left + chartWidth, y);
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + width, y);
         ctx.stroke();
     }
 }
 
-function drawCandle(candle, x, width, minPrice, maxPrice, priceScale) {
-    const yHigh = chartPadding.top + (maxPrice - candle.h) * priceScale;
-    const yLow = chartPadding.top + (maxPrice - candle.l) * priceScale;
-    const yOpen = chartPadding.top + (maxPrice - candle.o) * priceScale;
-    const yClose = chartPadding.top + (maxPrice - candle.c) * priceScale;
+function drawPriceScale(minPrice, maxPrice, height, padding) {
+    const steps = 6;
+    const priceStep = (maxPrice - minPrice) / steps;
     
-    const isBullish = candle.c >= candle.o;
-    const color = isBullish ? '#00ff88' : '#ff3366';
-    
-    // Draw wick
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + width / 2, yHigh);
-    ctx.lineTo(x + width / 2, yLow);
-    ctx.stroke();
-    
-    // Draw body
-    ctx.fillStyle = color;
-    const bodyTop = Math.min(yOpen, yClose);
-    const bodyHeight = Math.abs(yClose - yOpen) || 1;
-    ctx.fillRect(x, bodyTop, width, bodyHeight);
-}
-
-function drawPriceScale(minPrice, maxPrice, priceRange, width, height) {
     ctx.fillStyle = '#888';
     ctx.font = '11px Roboto';
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'right';
     
-    for (let i = 0; i <= 5; i++) {
-        const price = minPrice + (priceRange * i / 5);
-        const y = chartPadding.top + height - chartPadding.bottom - chartPadding.top - 
-                  ((height - chartPadding.top - chartPadding.bottom) * i / 5);
+    for (let i = 0; i <= steps; i++) {
+        const price = minPrice + i * priceStep;
+        const y = padding.top + height - (i / steps) * height;
         
-        const text = price.toFixed(2);
-        const textWidth = ctx.measureText(text).width;
-        
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(width - chartPadding.right + 2, y - 8, textWidth + 8, 16);
-        
-        ctx.fillStyle = '#888';
-        ctx.fillText(text, width - chartPadding.right + 6, y + 4);
+        ctx.fillText(price.toFixed(2), canvas.width - padding.right + 55, y + 4);
     }
     
     // Current price line
     if (chartData.length > 0) {
         const currentPrice = chartData[chartData.length - 1].c;
-        const chartH = height - chartPadding.top - chartPadding.bottom;
-        const y = chartPadding.top + (maxPrice - currentPrice) * chartH / priceRange;
+        const y = padding.top + height - ((currentPrice - minPrice) / (maxPrice - minPrice)) * height;
         
         ctx.strokeStyle = '#00ff88';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(chartPadding.left, y);
-        ctx.lineTo(width - chartPadding.right, y);
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(canvas.width - padding.right, y);
         ctx.stroke();
         ctx.setLineDash([]);
         
+        // Price label
         const text = currentPrice.toFixed(2);
         const textWidth = ctx.measureText(text).width;
         
         ctx.fillStyle = '#00ff88';
-        ctx.fillRect(width - chartPadding.right + 2, y - 8, textWidth + 8, 16);
+        ctx.fillRect(canvas.width - padding.right + 2, y - 8, textWidth + 8, 16);
         
         ctx.fillStyle = '#0e0e0e';
         ctx.font = 'bold 11px Roboto';
-        ctx.fillText(text, width - chartPadding.right + 6, y + 4);
+        ctx.fillText(text, canvas.width - padding.right + 6, y + 4);
     }
+    
+    ctx.textAlign = 'left';
 }
 
-function drawTimeScale(visibleData, chartWidth, height) {
-    if (visibleData.length === 0) return;
-    
-    ctx.fillStyle = '#888';
-    ctx.font = '10px Roboto';
-    ctx.textAlign = 'center';
-    
-    const numLabels = 4;
-    const step = Math.floor(visibleData.length / numLabels);
-    
-    for (let i = 0; i < numLabels; i++) {
-        const idx = i * step;
-        if (idx >= visibleData.length) continue;
-        
-        const candle = visibleData[idx];
-        const x = chartPadding.left + (idx * (chartWidth / visibleData.length));
-        const time = new Date(candle.time);
-        const timeStr = time.getHours().toString().padStart(2, '0') + ':' + 
-                       time.getMinutes().toString().padStart(2, '0');
-        
-        ctx.fillText(timeStr, x, height - 10);
-    }
-}
-
-function drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth) {
+function drawCrosshair(minPrice, maxPrice, visibleData, candleW, padding, chartW) {
     if (!crosshairX || !crosshairY) return;
     
-    const maxX = chartPadding.left + chartWidth;
+    const maxX = padding.left + chartW;
     if (crosshairX > maxX) return;
     
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
@@ -478,69 +357,103 @@ function drawCrosshair(minPrice, maxPrice, priceScale, visibleData, chartWidth) 
     
     ctx.setLineDash([]);
     
-    const candleIndex = Math.floor((crosshairX - chartPadding.left) / (chartWidth / visibleData.length));
+    const candleIndex = Math.floor((crosshairX - padding.left) / candleW);
     if (candleIndex >= 0 && candleIndex < visibleData.length) {
         const candle = visibleData[candleIndex];
-        updateInfoBox(candle);
+        document.getElementById('infoOpen').textContent = candle.o.toFixed(2);
+        document.getElementById('infoHigh').textContent = candle.h.toFixed(2);
+        document.getElementById('infoLow').textContent = candle.l.toFixed(2);
+        document.getElementById('infoClose').textContent = candle.c.toFixed(2);
     }
 }
 
-function updateInfoBox(candle) {
-    document.getElementById('infoOpen').textContent = candle.o.toFixed(2);
-    document.getElementById('infoHigh').textContent = candle.h.toFixed(2);
-    document.getElementById('infoLow').textContent = candle.l.toFixed(2);
-    document.getElementById('infoClose').textContent = candle.c.toFixed(2);
-}
-
 // ============================================================================
-// INTERACTION
+// INTERACTION - EXACT COPY FROM WORKING CODE
 // ============================================================================
 function setupInteraction() {
-    canvas.addEventListener('mousedown', handleTouchStart);
-    canvas.addEventListener('mousemove', handleTouchMove);
-    canvas.addEventListener('mouseup', handleTouchEnd);
-    canvas.addEventListener('mouseleave', handleTouchEnd);
+    let startX, startOffset;
     
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', handleTouchEnd);
+    canvas.addEventListener('touchstart', (e) => {
+        if (crosshairEnabled) {
+            const rect = canvas.getBoundingClientRect();
+            crosshairX = e.touches[0].clientX - rect.left;
+            crosshairY = e.touches[0].clientY - rect.top;
+            drawChart();
+        } else {
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            startOffset = scroll;
+            autoScroll = false;
+        }
+    });
     
-    canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-}
-
-function handleTouchStart(e) {
-    const touch = e.touches ? e.touches[0] : e;
-    lastTouchX = touch.clientX;
+    canvas.addEventListener('touchmove', (e) => {
+        if (!isDragging && !crosshairEnabled) return;
+        e.preventDefault();
+        
+        if (crosshairEnabled) {
+            const rect = canvas.getBoundingClientRect();
+            crosshairX = e.touches[0].clientX - rect.left;
+            crosshairY = e.touches[0].clientY - rect.top;
+            drawChart();
+        } else {
+            const deltaX = e.touches[0].clientX - startX;
+            const candlesPerScreen = Math.floor(zoom);
+            const pixelsPerCandle = canvas.width / candlesPerScreen;
+            const candlesDelta = Math.round(deltaX / pixelsPerCandle);
+            scroll = Math.max(0, Math.min(chartData.length - candlesPerScreen, startOffset - candlesDelta));
+            drawChart();
+        }
+    }, { passive: false });
     
-    if (crosshairEnabled) {
-        const rect = canvas.getBoundingClientRect();
-        crosshairX = touch.clientX - rect.left;
-        crosshairY = touch.clientY - rect.top;
-        drawChart();
-    } else {
-        isDragging = true;
-    }
-}
-
-function handleTouchMove(e) {
-    const touch = e.touches ? e.touches[0] : e;
-    const rect = canvas.getBoundingClientRect();
+    canvas.addEventListener('touchend', () => {
+        isDragging = false;
+        if (scroll >= chartData.length - zoom - 5) {
+            autoScroll = true;
+        }
+    });
     
-    if (crosshairEnabled) {
-        crosshairX = touch.clientX - rect.left;
-        crosshairY = touch.clientY - rect.top;
-        drawChart();
-    } else if (isDragging) {
-        const deltaX = touch.clientX - lastTouchX;
-        scroll += Math.round(deltaX * 0.5); // Natural scrolling
-        scroll = Math.max(0, Math.min(scroll, chartData.length - 10));
-        lastTouchX = touch.clientX;
-        drawChart();
-    }
-}
-
-function handleTouchEnd(e) {
-    isDragging = false;
+    // Mouse support
+    canvas.addEventListener('mousedown', (e) => {
+        if (crosshairEnabled) {
+            const rect = canvas.getBoundingClientRect();
+            crosshairX = e.clientX - rect.left;
+            crosshairY = e.clientY - rect.top;
+            drawChart();
+        } else {
+            isDragging = true;
+            startX = e.clientX;
+            startOffset = scroll;
+            autoScroll = false;
+        }
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+        if (crosshairEnabled) {
+            const rect = canvas.getBoundingClientRect();
+            crosshairX = e.clientX - rect.left;
+            crosshairY = e.clientY - rect.top;
+            drawChart();
+        } else if (isDragging) {
+            const deltaX = e.clientX - startX;
+            const candlesPerScreen = Math.floor(zoom);
+            const pixelsPerCandle = canvas.width / candlesPerScreen;
+            const candlesDelta = Math.round(deltaX / pixelsPerCandle);
+            scroll = Math.max(0, Math.min(chartData.length - candlesPerScreen, startOffset - candlesDelta));
+            drawChart();
+        }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+        isDragging = false;
+        if (scroll >= chartData.length - zoom - 5) {
+            autoScroll = true;
+        }
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+    });
 }
 
 // ============================================================================
@@ -550,26 +463,40 @@ window.changeTimeframe = function(tf) {
     currentTimeframe = tf;
     chartData = [];
     scroll = 0;
+    autoScroll = true;
     
     document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
     showLoading();
     
-    if (isConnected) {
-        // Unsubscribe from old timeframe
+    if (isConnected && ws) {
         ws.send(JSON.stringify({ forget_all: 'ticks' }));
-        requestCandles();
+        
+        const apiSymbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
+        
+        ws.send(JSON.stringify({ 
+            ticks: apiSymbol, 
+            subscribe: 1 
+        }));
+        
+        ws.send(JSON.stringify({
+            ticks_history: apiSymbol,
+            count: 1000,
+            end: 'latest',
+            style: 'candles',
+            granularity: currentTimeframe
+        }));
     }
 };
 
 window.zoomIn = function() {
-    zoom = Math.min(3.0, zoom + 0.2);
+    zoom = Math.max(20, zoom - 10);
     drawChart();
 };
 
 window.zoomOut = function() {
-    zoom = Math.max(0.5, zoom - 0.2);
+    zoom = Math.min(200, zoom + 10);
     drawChart();
 };
 
@@ -590,8 +517,9 @@ window.toggleCrosshair = function() {
 };
 
 window.resetView = function() {
-    zoom = 1.0;
+    zoom = 80;
     scroll = 0;
+    autoScroll = true;
     drawChart();
 };
 
@@ -634,4 +562,4 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-console.log('🏅 Gold Trading Terminal Loaded - Deriv Data Only');
+console.log('🏅 Gold Trading Terminal - Using Proven Code Structure');
