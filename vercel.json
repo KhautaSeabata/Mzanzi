@@ -1,19 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "data-analyzer.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "datascraper.py",
-      "use": "@vercel/python"
-    }
-  ],
   "routes": [
     {
       "src": "/",
@@ -22,10 +8,6 @@
     {
       "src": "/analyzer",
       "dest": "/data-analyzer.html"
-    },
-    {
-      "src": "/api/scrape",
-      "dest": "/datascraper.py"
     }
   ]
 }
