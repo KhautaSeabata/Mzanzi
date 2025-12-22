@@ -37,22 +37,22 @@
             gap: 15px;
         }
 
-        .symbol-info {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .symbol-name {
-            font-size: 18px;
-            font-weight: 700;
+        .symbol-selector {
+            background: #252525;
+            border: 1px solid #333;
             color: #00ff88;
-            letter-spacing: 0.5px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            font-family: 'Roboto', sans-serif;
         }
 
-        .symbol-description {
-            font-size: 11px;
-            color: #888;
+        .symbol-selector:hover {
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
         }
 
         .price-display {
@@ -275,10 +275,12 @@
 
     <div class="header">
         <div class="header-left">
-            <div class="symbol-info">
-                <div class="symbol-name">XAUUSD</div>
-                <div class="symbol-description">Gold vs US Dollar</div>
-            </div>
+            <select class="symbol-selector" id="symbolSelector" onchange="changeSymbol()">
+                <option value="XAUUSD" selected>XAUUSD - Gold</option>
+                <option value="US30">US30 - Dow Jones</option>
+                <option value="US100">US100 - NASDAQ 100</option>
+                <option value="GER40">GER40 - Germany 40</option>
+            </select>
             
             <div class="price-display">
                 <div class="current-price" id="currentPrice">--</div>
