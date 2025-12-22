@@ -1,60 +1,18 @@
 // ============================================================================
-// TRADING TERMINAL - REAL-TIME DATA ENGINE
+// GOLD TRADING TERMINAL - DERIV DATA ONLY
 // ============================================================================
 
-// Symbol Configuration with Multiple Real Data Providers
-const SYMBOLS = {
-    US30: {
-        name: 'US30',
-        description: 'Dow Jones Industrial Average',
-        sources: [
-            { provider: 'deriv', symbol: 'WLDUS30', type: 'primary' },
-            { provider: 'yahoo', symbol: 'YM=F', type: 'futures' },
-            { provider: 'finnhub', symbol: 'OANDA:US30_USD', type: 'cfd' }
-        ],
-        basePrice: 38000
-    },
-    US100: {
-        name: 'US100',
-        description: 'NASDAQ 100',
-        sources: [
-            { provider: 'deriv', symbol: 'WLDNAS100', type: 'primary' },
-            { provider: 'yahoo', symbol: 'NQ=F', type: 'futures' },
-            { provider: 'finnhub', symbol: 'OANDA:NAS100_USD', type: 'cfd' }
-        ],
-        basePrice: 16500
-    },
-    GER40: {
-        name: 'GER40',
-        description: 'Germany 40 (DAX)',
-        sources: [
-            { provider: 'deriv', symbol: 'WLDGDAXI', type: 'primary' },
-            { provider: 'yahoo', symbol: '^GDAXI', type: 'index' },
-            { provider: 'finnhub', symbol: 'OANDA:DE30_EUR', type: 'cfd' }
-        ],
-        basePrice: 17500
-    },
-    XAUUSD: {
-        name: 'XAUUSD',
-        description: 'Gold vs USD',
-        sources: [
-            { provider: 'deriv', symbol: 'frxGOLD', type: 'forex' },
-            { provider: 'yahoo', symbol: 'GC=F', type: 'futures' },
-            { provider: 'deriv', symbol: 'frxXAUUSD', type: 'forex' }
-        ],
-        basePrice: 2650
-    }
-};
+// Gold Configuration
+const GOLD_SYMBOL = 'frxGOLD'; // Deriv Gold symbol
+const BACKUP_SYMBOL = 'frxXAUUSD'; // Backup if primary fails
 
 // Global State
 let canvas, ctx;
 let chartData = [];
-let currentSymbol = 'XAUUSD'; // Default to Gold (working perfectly)
-let currentTimeframe = 300;
+let currentTimeframe = 300; // 5 minutes
 let ws = null;
 let isConnected = false;
-let currentSourceIndex = 0;
-let isLoadingAlternative = false;
+let useBackupSymbol = false;
 
 // Chart Settings
 let zoom = 1.0;
@@ -79,8 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas = document.getElementById('chartCanvas');
     ctx = canvas.getContext('2d');
     
-    console.log('🚀 Trading Terminal Starting...');
-    console.log(`📊 Default Symbol: ${currentSymbol} (Gold)`);
+    console.log('🏅 Gold Trading Terminal Starting...');
+    console.log(`📊 Symbol: ${GOLD_SYMBOL}`);
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -97,7 +55,7 @@ function resizeCanvas() {
 }
 
 // ============================================================================
-// WEBSOCKET CONNECTION WITH MULTI-SOURCE SUPPORT
+// WEBSOCKET CONNECTION - DERIV ONLY
 // ============================================================================
 function connectWebSocket() {
     updateConnectionStatus(false);
@@ -107,13 +65,13 @@ function connectWebSocket() {
         ws = null;
     }
     
-    console.log(`Connecting to Deriv WebSocket (Source ${currentSourceIndex + 1})...`);
+    console.log('🔌 Connecting to Deriv WebSocket...');
     
     try {
         ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
         
         ws.onopen = () => {
-            console.log('✓ Connected to Deriv WebSocket');
+            console.log('✅ Connected to Deriv');
             updateConnectionStatus(true);
             requestCandles();
         };
@@ -122,21 +80,22 @@ function connectWebSocket() {
             const data = JSON.parse(event.data);
             
             if (data.error) {
-                console.error('API Error:', data.error.message);
-                handleDataError(data.error.message);
+                console.error('❌ Deriv Error:', data.error.message);
+                
+                // Try backup symbol if primary fails
+                if (!useBackupSymbol) {
+                    console.log('⚠️ Trying backup symbol:', BACKUP_SYMBOL);
+                    useBackupSymbol = true;
+                    requestCandles();
+                } else {
+                    alert('Unable to load Gold data. Please check your connection and refresh.');
+                    hideLoading();
+                }
                 return;
             }
             
             if (data.candles) {
-                if (data.candles.length === 0) {
-                    console.warn('Received empty candles array');
-                    handleDataError('No data available for this symbol');
-                    return;
-                }
-                
-                console.log(`✓ Received ${data.candles.length} candles from source ${currentSourceIndex + 1}`);
-                currentSourceIndex = 0; // Reset on success
-                isLoadingAlternative = false;
+                console.log(`✅ Received ${data.candles.length} candles`);
                 processCandles(data.candles);
                 hideLoading();
                 subscribeTicks();
@@ -148,19 +107,19 @@ function connectWebSocket() {
         };
         
         ws.onerror = (error) => {
-            console.error('WebSocket Connection Error:', error);
+            console.error('❌ WebSocket Error:', error);
             updateConnectionStatus(false);
         };
         
         ws.onclose = () => {
-            console.log('WebSocket closed');
+            console.log('🔌 WebSocket closed');
             updateConnectionStatus(false);
             
             // Auto-reconnect after 3 seconds if we have data
             if (chartData.length > 0) {
                 setTimeout(() => {
                     if (!isConnected) {
-                        console.log('Attempting to reconnect...');
+                        console.log('🔄 Attempting to reconnect...');
                         connectWebSocket();
                     }
                 }, 3000);
@@ -168,27 +127,18 @@ function connectWebSocket() {
         };
         
     } catch (error) {
-        console.error('Failed to create WebSocket:', error);
+        console.error('❌ Failed to create WebSocket:', error);
+        alert('Connection failed. Please check your internet and refresh the page.');
         updateConnectionStatus(false);
+        hideLoading();
     }
 }
 
 function requestCandles() {
-    const symbol = SYMBOLS[currentSymbol];
-    const source = symbol.sources[currentSourceIndex];
+    const symbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
     
-    console.log(`Requesting: ${source.symbol} from ${source.provider} (${source.type}), TF: ${currentTimeframe}s`);
+    console.log(`📊 Requesting candles: ${symbol}, Timeframe: ${currentTimeframe}s`);
     
-    if (source.provider === 'deriv') {
-        requestDerivCandles(source.symbol);
-    } else if (source.provider === 'yahoo') {
-        requestYahooCandles(source.symbol);
-    } else if (source.provider === 'finnhub') {
-        requestFinnhubCandles(source.symbol);
-    }
-}
-
-function requestDerivCandles(symbol) {
     ws.send(JSON.stringify({
         ticks_history: symbol,
         adjust_start_time: 1,
@@ -200,292 +150,15 @@ function requestDerivCandles(symbol) {
     }));
 }
 
-async function requestYahooCandles(symbol) {
-    try {
-        const interval = getYahooInterval(currentTimeframe);
-        const range = '5d'; // Get 5 days of data
-        
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
-        
-        console.log('Fetching from Yahoo Finance...');
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.chart && data.chart.result && data.chart.result[0]) {
-            const result = data.chart.result[0];
-            const timestamps = result.timestamp;
-            const quotes = result.indicators.quote[0];
-            
-            const candles = timestamps.map((time, i) => ({
-                epoch: time,
-                open: quotes.open[i],
-                high: quotes.high[i],
-                low: quotes.low[i],
-                close: quotes.close[i]
-            })).filter(c => c.open && c.high && c.low && c.close);
-            
-            if (candles.length > 0) {
-                console.log(`✓ Received ${candles.length} candles from Yahoo Finance`);
-                processYahooCandles(candles);
-                hideLoading();
-                startYahooPolling(symbol);
-            } else {
-                throw new Error('No candles returned from Yahoo Finance');
-            }
-        } else {
-            throw new Error('Invalid response from Yahoo Finance');
-        }
-    } catch (error) {
-        console.error('Yahoo Finance error:', error);
-        handleDataError(error.message);
-    }
-}
-
-function getYahooInterval(seconds) {
-    if (seconds === 60) return '1m';
-    if (seconds === 300) return '5m';
-    if (seconds === 900) return '15m';
-    if (seconds === 1800) return '30m';
-    if (seconds === 3600) return '60m';
-    if (seconds === 14400) return '1d';
-    if (seconds === 86400) return '1d';
-    return '5m';
-}
-
-function processYahooCandles(candles) {
-    chartData = candles.map(c => ({
-        time: c.epoch * 1000,
-        o: parseFloat(c.open),
-        h: parseFloat(c.high),
-        l: parseFloat(c.low),
-        c: parseFloat(c.close)
-    }));
-    
-    drawChart();
-    updatePriceDisplay();
-}
-
-let yahooPollingInterval = null;
-
-function startYahooPolling(symbol) {
-    // Clear existing interval
-    if (yahooPollingInterval) {
-        clearInterval(yahooPollingInterval);
-    }
-    
-    // Poll every 10 seconds for updates
-    yahooPollingInterval = setInterval(async () => {
-        try {
-            const interval = getYahooInterval(currentTimeframe);
-            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=1d`;
-            
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data.chart && data.chart.result && data.chart.result[0]) {
-                const result = data.chart.result[0];
-                const timestamps = result.timestamp;
-                const quotes = result.indicators.quote[0];
-                
-                // Get latest candle
-                const lastIdx = timestamps.length - 1;
-                if (lastIdx >= 0) {
-                    const latestCandle = {
-                        time: timestamps[lastIdx] * 1000,
-                        o: quotes.open[lastIdx],
-                        h: quotes.high[lastIdx],
-                        l: quotes.low[lastIdx],
-                        c: quotes.close[lastIdx]
-                    };
-                    
-                    // Update or add latest candle
-                    if (chartData.length > 0) {
-                        const last = chartData[chartData.length - 1];
-                        if (latestCandle.time === last.time) {
-                            chartData[chartData.length - 1] = latestCandle;
-                        } else {
-                            chartData.push(latestCandle);
-                            if (chartData.length > 1000) chartData.shift();
-                        }
-                        
-                        drawChart();
-                        updatePriceDisplay();
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Yahoo polling error:', error);
-        }
-    }, 10000);
-}
-
-async function requestFinnhubCandles(symbol) {
-    try {
-        // Finnhub free API key (you can replace with your own)
-        const apiKey = 'demo'; // Using demo key, replace with real key for production
-        
-        const to = Math.floor(Date.now() / 1000);
-        const from = to - (500 * currentTimeframe);
-        const resolution = getFinnhubResolution(currentTimeframe);
-        
-        const url = `https://finnhub.io/api/v1/forex/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${to}&token=${apiKey}`;
-        
-        console.log('Fetching from Finnhub...');
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.s === 'ok' && data.t && data.t.length > 0) {
-            const candles = data.t.map((time, i) => ({
-                epoch: time,
-                open: data.o[i],
-                high: data.h[i],
-                low: data.l[i],
-                close: data.c[i]
-            }));
-            
-            console.log(`✓ Received ${candles.length} candles from Finnhub`);
-            processYahooCandles(candles); // Same processing as Yahoo
-            hideLoading();
-            startFinnhubPolling(symbol);
-        } else {
-            throw new Error('No data returned from Finnhub or invalid response');
-        }
-    } catch (error) {
-        console.error('Finnhub error:', error);
-        handleDataError(error.message);
-    }
-}
-
-function getFinnhubResolution(seconds) {
-    if (seconds === 60) return '1';
-    if (seconds === 300) return '5';
-    if (seconds === 900) return '15';
-    if (seconds === 1800) return '30';
-    if (seconds === 3600) return '60';
-    if (seconds === 86400) return 'D';
-    return '5';
-}
-
-let finnhubPollingInterval = null;
-
-function startFinnhubPolling(symbol) {
-    if (finnhubPollingInterval) {
-        clearInterval(finnhubPollingInterval);
-    }
-    
-    finnhubPollingInterval = setInterval(async () => {
-        try {
-            const apiKey = 'demo';
-            const to = Math.floor(Date.now() / 1000);
-            const from = to - (10 * currentTimeframe);
-            const resolution = getFinnhubResolution(currentTimeframe);
-            
-            const url = `https://finnhub.io/api/v1/forex/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${to}&token=${apiKey}`;
-            
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data.s === 'ok' && data.t && data.t.length > 0) {
-                const lastIdx = data.t.length - 1;
-                const latestCandle = {
-                    time: data.t[lastIdx] * 1000,
-                    o: data.o[lastIdx],
-                    h: data.h[lastIdx],
-                    l: data.l[lastIdx],
-                    c: data.c[lastIdx]
-                };
-                
-                if (chartData.length > 0) {
-                    const last = chartData[chartData.length - 1];
-                    if (latestCandle.time === last.time) {
-                        chartData[chartData.length - 1] = latestCandle;
-                    } else {
-                        chartData.push(latestCandle);
-                        if (chartData.length > 1000) chartData.shift();
-                    }
-                    
-                    drawChart();
-                    updatePriceDisplay();
-                }
-            }
-        } catch (error) {
-            console.error('Finnhub polling error:', error);
-        }
-    }, 10000);
-}
-
 function subscribeTicks() {
-    const symbol = SYMBOLS[currentSymbol];
-    const source = symbol.sources[currentSourceIndex];
+    const symbol = useBackupSymbol ? BACKUP_SYMBOL : GOLD_SYMBOL;
     
-    // Only subscribe to ticks for Deriv
-    if (source.provider === 'deriv') {
-        console.log(`Subscribing to ticks: ${source.symbol}`);
-        
-        ws.send(JSON.stringify({
-            ticks: source.symbol,
-            subscribe: 1
-        }));
-    }
-}
-
-function handleDataError(message) {
-    if (isLoadingAlternative) return;
+    console.log(`📡 Subscribing to live ticks: ${symbol}`);
     
-    const symbol = SYMBOLS[currentSymbol];
-    
-    // Try next source
-    if (currentSourceIndex < symbol.sources.length - 1) {
-        currentSourceIndex++;
-        isLoadingAlternative = true;
-        
-        const nextSource = symbol.sources[currentSourceIndex];
-        console.log(`Trying alternative source ${currentSourceIndex + 1}/${symbol.sources.length}: ${nextSource.provider} (${nextSource.type})`);
-        
-        // Clear polling intervals
-        if (yahooPollingInterval) {
-            clearInterval(yahooPollingInterval);
-            yahooPollingInterval = null;
-        }
-        if (finnhubPollingInterval) {
-            clearInterval(finnhubPollingInterval);
-            finnhubPollingInterval = null;
-        }
-        
-        // If switching to non-Deriv source, we don't need WebSocket
-        if (nextSource.provider !== 'deriv') {
-            setTimeout(() => {
-                requestCandles();
-            }, 1000);
-        } else {
-            // Close current connection and reconnect for Deriv
-            if (ws) {
-                ws.close();
-            }
-            setTimeout(() => {
-                connectWebSocket();
-            }, 1000);
-        }
-    } else {
-        // All sources failed
-        currentSourceIndex = 0;
-        isLoadingAlternative = false;
-        hideLoading();
-        
-        // Clear any polling intervals
-        if (yahooPollingInterval) clearInterval(yahooPollingInterval);
-        if (finnhubPollingInterval) clearInterval(finnhubPollingInterval);
-        
-        alert(
-            `Unable to load ${currentSymbol} data.\n\n` +
-            `Tried ${symbol.sources.length} different providers:\n` +
-            symbol.sources.map((s, i) => `${i + 1}. ${s.provider} (${s.type})`).join('\n') +
-            `\n\nPlease:\n` +
-            `• Check your internet connection\n` +
-            `• Try a different symbol\n` +
-            `• Refresh the page`
-        );
-    }
+    ws.send(JSON.stringify({
+        ticks: symbol,
+        subscribe: 1
+    }));
 }
 
 function processCandles(candles) {
@@ -497,6 +170,7 @@ function processCandles(candles) {
         c: parseFloat(c.close)
     }));
     
+    console.log(`✅ Chart data loaded: ${chartData.length} candles`);
     drawChart();
     updatePriceDisplay();
 }
@@ -802,42 +476,6 @@ function handleTouchEnd(e) {
 // ============================================================================
 // UI CONTROLS
 // ============================================================================
-window.changeSymbol = function() {
-    currentSymbol = document.getElementById('symbolSelector').value;
-    chartData = [];
-    scroll = 0;
-    currentSourceIndex = 0;
-    isLoadingAlternative = false;
-    
-    // Clear polling intervals
-    if (yahooPollingInterval) {
-        clearInterval(yahooPollingInterval);
-        yahooPollingInterval = null;
-    }
-    if (finnhubPollingInterval) {
-        clearInterval(finnhubPollingInterval);
-        finnhubPollingInterval = null;
-    }
-    
-    showLoading();
-    
-    const symbol = SYMBOLS[currentSymbol];
-    const source = symbol.sources[0];
-    
-    if (source.provider === 'deriv') {
-        if (isConnected) {
-            // Unsubscribe from old symbol
-            ws.send(JSON.stringify({ forget_all: 'ticks' }));
-            requestCandles();
-        } else {
-            connectWebSocket();
-        }
-    } else {
-        // For non-Deriv sources
-        requestCandles();
-    }
-};
-
 window.changeTimeframe = function(tf) {
     currentTimeframe = tf;
     chartData = [];
@@ -849,6 +487,8 @@ window.changeTimeframe = function(tf) {
     showLoading();
     
     if (isConnected) {
+        // Unsubscribe from old timeframe
+        ws.send(JSON.stringify({ forget_all: 'ticks' }));
         requestCandles();
     }
 };
@@ -924,4 +564,4 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-console.log('Trading Terminal Loaded - Multi-Source Support Enabled');
+console.log('🏅 Gold Trading Terminal Loaded - Deriv Data Only');
