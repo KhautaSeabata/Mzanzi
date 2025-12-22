@@ -1,5 +1,0 @@
-The app should work exactly as it is but not modify the files such that we get the live data from deriv websocket...  and give me the best smc posaible combining both morden and traditional smc
-
-Also use different time frames and now we use candlesticks not lone charts
-
-Use cat terminal to generate downloadable files
