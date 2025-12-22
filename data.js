@@ -37,6 +37,8 @@ let currentSymbol = 'US30';
 let currentTimeframe = 300; // 5 minutes in seconds
 let ws = null;
 let isConnected = false;
+let retryCount = 0;
+let maxRetries = 3;
 
 // Chart Settings
 let zoom = 1.0;
@@ -81,48 +83,72 @@ function resizeCanvas() {
 function connectWebSocket() {
     updateConnectionStatus(false);
     
-    if (ws) ws.close();
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
     
-    console.log('Connecting to Deriv WebSocket...');
-    ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+    console.log(`Connecting to Deriv WebSocket... (Attempt ${retryCount + 1}/${maxRetries})`);
     
-    ws.onopen = () => {
-        console.log('✓ Connected to Deriv WebSocket');
-        updateConnectionStatus(true);
-        requestCandles();
-    };
-    
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+    try {
+        ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
         
-        if (data.error) {
-            console.error('WebSocket Error:', data.error);
-            handleError(data.error.message);
-            return;
-        }
+        ws.onopen = () => {
+            console.log('✓ Connected to Deriv WebSocket');
+            updateConnectionStatus(true);
+            retryCount = 0; // Reset retry count on success
+            requestCandles();
+        };
         
-        if (data.candles) {
-            console.log(`✓ Received ${data.candles.length} candles`);
-            processCandles(data.candles);
-            hideLoading();
-            subscribeTicks();
-        } else if (data.tick) {
-            updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
-        } else if (data.ohlc) {
-            updateOHLC(data.ohlc);
-        }
-    };
-    
-    ws.onerror = (error) => {
-        console.error('WebSocket Error:', error);
-        updateConnectionStatus(false);
-    };
-    
-    ws.onclose = () => {
-        console.log('WebSocket closed, reconnecting...');
-        updateConnectionStatus(false);
-        setTimeout(connectWebSocket, 5000);
-    };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.error) {
+                console.error('WebSocket Error:', data.error);
+                
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    handleError(data.error.message);
+                } else {
+                    alert(`Failed to load data after ${maxRetries} attempts. Please:\n1. Check your internet connection\n2. Try a different symbol\n3. Refresh the page`);
+                    hideLoading();
+                }
+                return;
+            }
+            
+            if (data.candles) {
+                console.log(`✓ Received ${data.candles.length} candles for ${currentSymbol}`);
+                retryCount = 0; // Reset on successful data
+                processCandles(data.candles);
+                hideLoading();
+                subscribeTicks();
+            } else if (data.tick) {
+                updateTick(parseFloat(data.tick.quote), data.tick.epoch * 1000);
+            } else if (data.ohlc) {
+                updateOHLC(data.ohlc);
+            }
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket Connection Error:', error);
+            updateConnectionStatus(false);
+        };
+        
+        ws.onclose = () => {
+            console.log('WebSocket closed');
+            updateConnectionStatus(false);
+            
+            // Only auto-reconnect if we're not at max retries
+            if (retryCount < maxRetries) {
+                console.log('Reconnecting in 3 seconds...');
+                setTimeout(connectWebSocket, 3000);
+            }
+        };
+    } catch (error) {
+        console.error('Failed to create WebSocket:', error);
+        alert('Connection failed. Please check your internet connection and refresh the page.');
+        hideLoading();
+    }
 }
 
 function requestCandles() {
@@ -217,43 +243,41 @@ function updateOHLC(ohlc) {
 function handleError(message) {
     console.error('API Error:', message);
     
-    // Show error and use demo data
-    alert(`Connection error: ${message}\nUsing demo data...`);
-    generateDemoData();
-    hideLoading();
-    drawChart();
-    updatePriceDisplay();
+    // Try alternative symbols based on current selection
+    const alternatives = getAlternativeSymbols(currentSymbol);
+    
+    if (alternatives.length > 0) {
+        console.log(`Trying alternative symbol: ${alternatives[0]}`);
+        tryAlternativeSymbol(alternatives[0]);
+    } else {
+        alert(`Unable to load ${currentSymbol} data. Please try another symbol.`);
+        hideLoading();
+    }
 }
 
-// ============================================================================
-// DEMO DATA GENERATION (FALLBACK)
-// ============================================================================
-function generateDemoData() {
-    const symbol = SYMBOLS[currentSymbol];
-    const basePrice = symbol.basePrice;
-    const numCandles = 500;
+function getAlternativeSymbols(symbol) {
+    const alternatives = {
+        'US30': ['1HZ100V', 'R_100'],     // Volatility indices as fallback
+        'US100': ['1HZ100V', 'R_100'],
+        'GER40': ['1HZ100V', 'R_100'],
+        'XAUUSD': ['frxXAUUSD', '1HZ100V'] // Try forex gold, then volatility
+    };
     
-    chartData = [];
-    let price = basePrice;
-    const now = Date.now();
+    return alternatives[symbol] || [];
+}
+
+function tryAlternativeSymbol(apiSymbol) {
+    console.log(`Requesting alternative symbol: ${apiSymbol}`);
     
-    for (let i = 0; i < numCandles; i++) {
-        const time = now - (numCandles - i) * currentTimeframe * 1000;
-        
-        // Random walk
-        const change = (Math.random() - 0.5) * (basePrice * 0.002);
-        price += change;
-        
-        const open = price;
-        const high = price + Math.random() * (basePrice * 0.001);
-        const low = price - Math.random() * (basePrice * 0.001);
-        const close = low + Math.random() * (high - low);
-        
-        chartData.push({ time, o: open, h: high, l: low, c: close });
-        price = close;
-    }
-    
-    console.log(`Generated ${chartData.length} demo candles`);
+    ws.send(JSON.stringify({
+        ticks_history: apiSymbol,
+        adjust_start_time: 1,
+        count: 500,
+        end: 'latest',
+        start: 1,
+        style: 'candles',
+        granularity: currentTimeframe
+    }));
 }
 
 // ============================================================================
@@ -498,7 +522,7 @@ function handleTouchMove(e) {
         drawChart();
     } else if (isDragging) {
         const deltaX = touch.clientX - lastTouchX;
-        scroll -= Math.round(deltaX * 0.5);
+        scroll += Math.round(deltaX * 0.5); // Natural scrolling (not inverse)
         scroll = Math.max(0, Math.min(scroll, chartData.length - 10));
         lastTouchX = touch.clientX;
         drawChart();
@@ -516,6 +540,7 @@ window.changeSymbol = function() {
     currentSymbol = document.getElementById('symbolSelector').value;
     chartData = [];
     scroll = 0;
+    retryCount = 0; // Reset retry count for new symbol
     
     showLoading();
     
@@ -530,6 +555,7 @@ window.changeTimeframe = function(tf) {
     currentTimeframe = tf;
     chartData = [];
     scroll = 0;
+    retryCount = 0; // Reset retry count for new timeframe
     
     // Update active button
     document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
