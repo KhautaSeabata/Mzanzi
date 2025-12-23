@@ -3,34 +3,12 @@
 // Based on proven working code from analysis.js
 // ============================================================================
 
-// Symbol Configuration (using proven working symbols from analysis.js)
-const SYMBOLS = {
-    'XAUUSD': { 
-        name: 'GOLD (XAU/USD)', 
-        apiSymbol: 'frxXAUUSD',
-        basePrice: 2650
-    },
-    'US30': { 
-        name: 'US30 - Dow Jones', 
-        apiSymbol: 'WLDUS30',
-        basePrice: 38000
-    },
-    'US100': { 
-        name: 'US100 - NASDAQ 100', 
-        apiSymbol: 'WLDNAS100',
-        basePrice: 16500
-    },
-    'GER40': { 
-        name: 'GER40 - Germany 40', 
-        apiSymbol: 'WLDGDAXI',
-        basePrice: 17500
-    }
-};
+// Gold Symbol Configuration (single symbol only)
+const GOLD_SYMBOL = 'frxXAUUSD'; // Proven working symbol
 
 // Global State
 let canvas, ctx;
 let chartData = [];
-let currentSymbol = 'XAUUSD'; // Default to Gold
 let currentTimeframe = 300; // 5 minutes
 let ws = null;
 let isConnected = false;
@@ -93,18 +71,17 @@ function connectWebSocket() {
         console.log('✅ Connected to Deriv');
         updateConnectionStatus(true);
         
-        const apiSymbol = SYMBOLS[currentSymbol].apiSymbol;
-        console.log(`📊 Requesting: ${currentSymbol} (${apiSymbol})`);
+        console.log(`📊 Requesting: Gold (${GOLD_SYMBOL})`);
         
         // Subscribe to ticks
         ws.send(JSON.stringify({ 
-            ticks: apiSymbol, 
+            ticks: GOLD_SYMBOL, 
             subscribe: 1 
         }));
         
         // Request historical candles
         ws.send(JSON.stringify({
-            ticks_history: apiSymbol,
+            ticks_history: GOLD_SYMBOL,
             count: 1000,
             end: 'latest',
             style: 'candles',
@@ -118,7 +95,7 @@ function connectWebSocket() {
         if (data.error) {
             console.error('❌ Deriv Error:', data.error.message);
             hideLoading();
-            alert(`Unable to load ${SYMBOLS[currentSymbol].name} data.\n\nError: ${data.error.message}\n\nThis symbol may not be available right now.\nPlease try another symbol or refresh later.`);
+            alert(`Unable to load Gold data.\n\nError: ${data.error.message}\n\nPlease refresh the page.`);
             return;
         }
         
@@ -485,49 +462,21 @@ window.changeTimeframe = function(tf) {
     showLoading();
     
     if (isConnected && ws) {
-        const apiSymbol = SYMBOLS[currentSymbol].apiSymbol;
-        
         ws.send(JSON.stringify({ forget_all: 'ticks' }));
         
         ws.send(JSON.stringify({ 
-            ticks: apiSymbol, 
+            ticks: GOLD_SYMBOL, 
             subscribe: 1 
         }));
         
         ws.send(JSON.stringify({
-            ticks_history: apiSymbol,
+            ticks_history: GOLD_SYMBOL,
             count: 1000,
             end: 'latest',
             style: 'candles',
             granularity: currentTimeframe
         }));
     }
-};
-
-window.changeSymbol = function() {
-    const newSymbol = document.getElementById('symbolSelector').value;
-    
-    if (newSymbol === currentSymbol) return;
-    
-    console.log(`🔄 Switching from ${currentSymbol} to ${newSymbol}`);
-    
-    currentSymbol = newSymbol;
-    chartData = [];
-    scroll = 0;
-    autoScroll = true;
-    
-    // Update symbol display
-    updateSymbolDisplay();
-    
-    showLoading();
-    
-    if (ws) {
-        ws.close();
-    }
-    
-    setTimeout(() => {
-        connectWebSocket();
-    }, 500);
 };
 
 window.zoomIn = function() {
@@ -585,14 +534,8 @@ function updatePriceDisplay() {
     changeEl.className = 'price-change ' + (change >= 0 ? 'positive' : 'negative');
 }
 
-function updateSymbolDisplay() {
-    const symbolInfo = SYMBOLS[currentSymbol];
-    document.querySelector('.symbol-name').textContent = currentSymbol;
-    document.querySelector('.symbol-description').textContent = symbolInfo.name;
-}
-
 function getPrecision(price) {
-    // Determine precision based on price magnitude
+    // Gold typically uses 2 decimal places
     if (price < 1) return 5;
     if (price < 100) return 4;
     if (price < 1000) return 3;
