@@ -265,6 +265,165 @@
             color: #888;
             font-size: 14px;
         }
+
+        /* Signal Panel */
+        .signal-panel {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            background: rgba(26, 26, 26, 0.98);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            max-width: 400px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .signal-panel.hidden {
+            display: none;
+        }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .signal-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: #00ff88;
+            letter-spacing: 1px;
+        }
+
+        .signal-close {
+            cursor: pointer;
+            color: #888;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .signal-close:hover {
+            color: #ff3366;
+        }
+
+        .signal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .signal-bias {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+        }
+
+        .signal-bias.bullish {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 2px solid #00ff88;
+        }
+
+        .signal-bias.bearish {
+            background: rgba(255, 51, 102, 0.2);
+            color: #ff3366;
+            border: 2px solid #ff3366;
+        }
+
+        .signal-confidence {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .signal-levels {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .level-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .level-label {
+            color: #888;
+            font-weight: 600;
+        }
+
+        .level-value {
+            font-family: 'Roboto', monospace;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .level-value.green {
+            color: #00ff88;
+        }
+
+        .level-value.red {
+            color: #ff3366;
+        }
+
+        .signal-meta {
+            display: flex;
+            justify-content: space-around;
+            font-size: 11px;
+            color: #888;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .signal-meta strong {
+            color: #fff;
+            margin-left: 4px;
+        }
+
+        .signal-reasons {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .signal-reasons::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .signal-reasons::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
@@ -303,6 +462,8 @@
         <canvas id="chartCanvas"></canvas>
         
         <div class="chart-controls">
+            <div class="control-btn" id="generateSignalBtn" onclick="generateSignal()" title="Generate Signal">⚡</div>
+            <div class="control-btn" id="autoAnalyzeBtn" onclick="toggleAutoAnalyze()" title="Auto Analyze">🔄</div>
             <div class="control-btn" onclick="zoomIn()" title="Zoom In">+</div>
             <div class="control-btn" onclick="zoomOut()" title="Zoom Out">−</div>
             <div class="control-btn" id="crosshairBtn" onclick="toggleCrosshair()" title="Crosshair">✛</div>
@@ -323,8 +484,51 @@
                 <span class="info-value" id="infoClose">--</span>
             </div>
         </div>
+
+        <div class="signal-panel hidden" id="signalPanel">
+            <div class="signal-header">
+                <span class="signal-title">SIGNAL DETECTED</span>
+                <span class="signal-close" onclick="closeSignal()">✕</span>
+            </div>
+            <div class="signal-body">
+                <div class="signal-bias" id="signalBias">BULLISH</div>
+                <div class="signal-confidence" id="signalConfidence">85%</div>
+                
+                <div class="signal-levels">
+                    <div class="level-row">
+                        <span class="level-label">Entry:</span>
+                        <span class="level-value" id="signalEntry">--</span>
+                    </div>
+                    <div class="level-row">
+                        <span class="level-label">TP1:</span>
+                        <span class="level-value green" id="signalTP1">--</span>
+                    </div>
+                    <div class="level-row">
+                        <span class="level-label">TP2:</span>
+                        <span class="level-value green" id="signalTP2">--</span>
+                    </div>
+                    <div class="level-row">
+                        <span class="level-label">TP3:</span>
+                        <span class="level-value green" id="signalTP3">--</span>
+                    </div>
+                    <div class="level-row">
+                        <span class="level-label">SL:</span>
+                        <span class="level-value red" id="signalSL">--</span>
+                    </div>
+                </div>
+                
+                <div class="signal-meta">
+                    <span>RR: <strong id="signalRR">--</strong></span>
+                    <span>Vol: <strong id="signalVol">--</strong>%</span>
+                    <span id="signalZone">--</span>
+                </div>
+                
+                <div class="signal-reasons" id="signalReasons"></div>
+            </div>
+        </div>
     </div>
 
+    <script src="smc.js"></script>
     <script src="data.js"></script>
 </body>
 </html>
