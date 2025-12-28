@@ -98,6 +98,30 @@
             background: #ff3366;
         }
 
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .history-btn {
+            padding: 6px 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .history-btn:hover {
+            background: #00ff88;
+            color: #0e0e0e;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
         /* Timeframe Bar */
         .timeframe-bar {
             background: #1a1a1a;
@@ -445,7 +469,10 @@
             </div>
         </div>
         
-        <div class="connection-status" id="connectionStatus"></div>
+        <div class="header-right">
+            <button class="history-btn" onclick="window.location.href='signals.html'" title="Signal History">📋</button>
+            <div class="connection-status" id="connectionStatus"></div>
+        </div>
     </div>
 
     <div class="timeframe-bar">
