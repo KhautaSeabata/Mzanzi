@@ -1,0 +1,36 @@
+services:
+  # Main Web Service (Trading Terminal)
+  - type: web
+    name: mzanzifx-trading-terminal
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: FIREBASE_DATABASE_URL
+        value: https://mzanzifx-default-rtdb.firebaseio.com
+    autoDeploy: true
+    branch: main
+
+  # Python Scraper (Background Worker) - Optional
+  # Uncomment if you want to run the scraper on Render
+  # - type: worker
+  #   name: mzanzifx-scraper
+  #   runtime: python
+  #   region: oregon
+  #   plan: free
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python scraper.py
+  #   envVars:
+  #     - key: FIREBASE_DATABASE_URL
+  #       value: https://mzanzifx-default-rtdb.firebaseio.com
+  #     - key: FIREBASE_SERVICE_ACCOUNT
+  #       sync: false  # Set this manually in Render dashboard
+  #   autoDeploy: true
+  #   branch: main
