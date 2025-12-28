@@ -1,10 +1,166 @@
 // ============================================================================
-// GOLD TRADING TERMINAL - DERIV WEBSOCKET ENGINE
-// Based on proven working code from analysis.js
+// MULTI-CURRENCY TRADING TERMINAL - DERIV WEBSOCKET ENGINE
+// Supports: Gold, Silver, Major & Minor Forex Pairs
 // ============================================================================
 
-// Gold Symbol Configuration (single symbol only)
-const GOLD_SYMBOL = 'frxXAUUSD'; // Proven working symbol
+// Symbol Configuration with Deriv API mapping
+const SYMBOLS = {
+    // Precious Metals
+    'XAUUSD': { 
+        name: 'Gold / US Dollar', 
+        apiSymbol: 'frxXAUUSD',
+        category: 'metals',
+        basePrice: 2650
+    },
+    'XAGUSD': { 
+        name: 'Silver / US Dollar', 
+        apiSymbol: 'frxXAGUSD',
+        category: 'metals',
+        basePrice: 30
+    },
+    
+    // Major Pairs
+    'EURUSD': { 
+        name: 'Euro / US Dollar', 
+        apiSymbol: 'frxEURUSD',
+        category: 'major',
+        basePrice: 1.10
+    },
+    'GBPUSD': { 
+        name: 'British Pound / US Dollar', 
+        apiSymbol: 'frxGBPUSD',
+        category: 'major',
+        basePrice: 1.27
+    },
+    'USDJPY': { 
+        name: 'US Dollar / Japanese Yen', 
+        apiSymbol: 'frxUSDJPY',
+        category: 'major',
+        basePrice: 149
+    },
+    'USDCHF': { 
+        name: 'US Dollar / Swiss Franc', 
+        apiSymbol: 'frxUSDCHF',
+        category: 'major',
+        basePrice: 0.88
+    },
+    'AUDUSD': { 
+        name: 'Australian Dollar / US Dollar', 
+        apiSymbol: 'frxAUDUSD',
+        category: 'major',
+        basePrice: 0.64
+    },
+    'USDCAD': { 
+        name: 'US Dollar / Canadian Dollar', 
+        apiSymbol: 'frxUSDCAD',
+        category: 'major',
+        basePrice: 1.43
+    },
+    'NZDUSD': { 
+        name: 'New Zealand Dollar / US Dollar', 
+        apiSymbol: 'frxNZDUSD',
+        category: 'major',
+        basePrice: 0.57
+    },
+    
+    // Minor Pairs (Cross Pairs)
+    'EURGBP': { 
+        name: 'Euro / British Pound', 
+        apiSymbol: 'frxEURGBP',
+        category: 'minor',
+        basePrice: 0.87
+    },
+    'EURJPY': { 
+        name: 'Euro / Japanese Yen', 
+        apiSymbol: 'frxEURJPY',
+        category: 'minor',
+        basePrice: 163
+    },
+    'GBPJPY': { 
+        name: 'British Pound / Japanese Yen', 
+        apiSymbol: 'frxGBPJPY',
+        category: 'minor',
+        basePrice: 189
+    },
+    'EURCHF': { 
+        name: 'Euro / Swiss Franc', 
+        apiSymbol: 'frxEURCHF',
+        category: 'minor',
+        basePrice: 0.97
+    },
+    'EURAUD': { 
+        name: 'Euro / Australian Dollar', 
+        apiSymbol: 'frxEURAUD',
+        category: 'minor',
+        basePrice: 1.72
+    },
+    'EURCAD': { 
+        name: 'Euro / Canadian Dollar', 
+        apiSymbol: 'frxEURCAD',
+        category: 'minor',
+        basePrice: 1.57
+    },
+    'GBPCHF': { 
+        name: 'British Pound / Swiss Franc', 
+        apiSymbol: 'frxGBPCHF',
+        category: 'minor',
+        basePrice: 1.11
+    },
+    'GBPAUD': { 
+        name: 'British Pound / Australian Dollar', 
+        apiSymbol: 'frxGBPAUD',
+        category: 'minor',
+        basePrice: 1.97
+    },
+    'GBPCAD': { 
+        name: 'British Pound / Canadian Dollar', 
+        apiSymbol: 'frxGBPCAD',
+        category: 'minor',
+        basePrice: 1.81
+    },
+    'AUDJPY': { 
+        name: 'Australian Dollar / Japanese Yen', 
+        apiSymbol: 'frxAUDJPY',
+        category: 'minor',
+        basePrice: 95
+    },
+    'AUDNZD': { 
+        name: 'Australian Dollar / New Zealand Dollar', 
+        apiSymbol: 'frxAUDNZD',
+        category: 'minor',
+        basePrice: 1.12
+    },
+    'AUDCAD': { 
+        name: 'Australian Dollar / Canadian Dollar', 
+        apiSymbol: 'frxAUDCAD',
+        category: 'minor',
+        basePrice: 0.92
+    },
+    'AUDCHF': { 
+        name: 'Australian Dollar / Swiss Franc', 
+        apiSymbol: 'frxAUDCHF',
+        category: 'minor',
+        basePrice: 0.56
+    },
+    'NZDJPY': { 
+        name: 'New Zealand Dollar / Japanese Yen', 
+        apiSymbol: 'frxNZDJPY',
+        category: 'minor',
+        basePrice: 85
+    },
+    'CADJPY': { 
+        name: 'Canadian Dollar / Japanese Yen', 
+        apiSymbol: 'frxCADJPY',
+        category: 'minor',
+        basePrice: 104
+    },
+    'CHFJPY': { 
+        name: 'Swiss Franc / Japanese Yen', 
+        apiSymbol: 'frxCHFJPY',
+        category: 'minor',
+        basePrice: 169
+    }
+};
 
 // Initialize SMC Analyzer
 let smcAnalyzer = null;
@@ -19,6 +175,7 @@ const FIREBASE_URL = 'https://mzanzifx-default-rtdb.firebaseio.com';
 // Global State
 let canvas, ctx;
 let chartData = [];
+let currentSymbol = 'XAUUSD'; // Default to Gold
 let currentTimeframe = 300; // 5 minutes
 let ws = null;
 let isConnected = false;
@@ -81,17 +238,18 @@ function connectWebSocket() {
         console.log('✅ Connected to Deriv');
         updateConnectionStatus(true);
         
-        console.log(`📊 Requesting: Gold (${GOLD_SYMBOL})`);
+        const apiSymbol = SYMBOLS[currentSymbol].apiSymbol;
+        console.log(`📊 Requesting: ${currentSymbol} (${apiSymbol})`);
         
         // Subscribe to ticks
         ws.send(JSON.stringify({ 
-            ticks: GOLD_SYMBOL, 
+            ticks: apiSymbol, 
             subscribe: 1 
         }));
         
         // Request historical candles
         ws.send(JSON.stringify({
-            ticks_history: GOLD_SYMBOL,
+            ticks_history: apiSymbol,
             count: 1000,
             end: 'latest',
             style: 'candles',
@@ -105,7 +263,7 @@ function connectWebSocket() {
         if (data.error) {
             console.error('❌ Deriv Error:', data.error.message);
             hideLoading();
-            alert(`Unable to load Gold data.\n\nError: ${data.error.message}\n\nPlease refresh the page.`);
+            alert(`Unable to load ${SYMBOLS[currentSymbol].name} data.\n\nError: ${data.error.message}\n\nPlease try another symbol or refresh.`);
             return;
         }
         
@@ -477,21 +635,48 @@ window.changeTimeframe = function(tf) {
     showLoading();
     
     if (isConnected && ws) {
+        const apiSymbol = SYMBOLS[currentSymbol].apiSymbol;
+        
         ws.send(JSON.stringify({ forget_all: 'ticks' }));
         
         ws.send(JSON.stringify({ 
-            ticks: GOLD_SYMBOL, 
+            ticks: apiSymbol, 
             subscribe: 1 
         }));
         
         ws.send(JSON.stringify({
-            ticks_history: GOLD_SYMBOL,
+            ticks_history: apiSymbol,
             count: 1000,
             end: 'latest',
             style: 'candles',
             granularity: currentTimeframe
         }));
     }
+};
+
+window.changeSymbol = function() {
+    const newSymbol = document.getElementById('symbolSelector').value;
+    
+    if (newSymbol === currentSymbol) return;
+    
+    console.log(`🔄 Switching from ${currentSymbol} to ${newSymbol}`);
+    
+    currentSymbol = newSymbol;
+    chartData = [];
+    scroll = 0;
+    autoScroll = true;
+    
+    showLoading();
+    
+    // Close existing WebSocket
+    if (ws) {
+        ws.close();
+    }
+    
+    // Reconnect with new symbol
+    setTimeout(() => {
+        connectWebSocket();
+    }, 500);
 };
 
 window.zoomIn = function() {
@@ -597,10 +782,15 @@ window.generateSignal = async function() {
     btn.style.pointerEvents = 'none';
     
     try {
-        // Run SMC analysis
-        const signal = smcAnalyzer.analyze(chartData, currentTimeframe);
+        // Run SMC analysis with current symbol
+        const signal = smcAnalyzer.analyze(chartData, currentTimeframe, currentSymbol);
         
         if (signal) {
+            // Add current symbol info
+            signal.symbol = currentSymbol;
+            signal.symbolName = SYMBOLS[currentSymbol].name;
+            signal.category = SYMBOLS[currentSymbol].category;
+            
             // Display signal
             displaySignal(signal);
             
@@ -630,7 +820,7 @@ window.toggleAutoAnalyze = function() {
         btn.classList.remove('active');
         console.log('⏹️ Auto-analyze stopped');
     } else {
-        smcAnalyzer.startAutoAnalysis(chartData, currentTimeframe, (signal) => {
+        smcAnalyzer.startAutoAnalysis(chartData, currentTimeframe, currentSymbol, (signal) => {
             console.log('🔔 Auto-signal detected!');
             displaySignal(signal);
             saveSignalToFirebase(signal);
