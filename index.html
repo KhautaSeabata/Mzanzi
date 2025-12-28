@@ -37,22 +37,43 @@
             gap: 15px;
         }
 
-        .symbol-info {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .symbol-name {
-            font-size: 18px;
-            font-weight: 700;
+        .symbol-selector {
+            background: #252525;
+            border: 1px solid #333;
             color: #00ff88;
-            letter-spacing: 0.5px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            font-family: 'Roboto', sans-serif;
+            min-width: 200px;
         }
 
-        .symbol-description {
-            font-size: 11px;
+        .symbol-selector:hover {
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .symbol-selector optgroup {
+            background: #1a1a1a;
             color: #888;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 5px;
+        }
+
+        .symbol-selector option {
+            background: #252525;
+            color: #fff;
+            padding: 8px;
+            font-size: 13px;
+        }
+
+        .symbol-selector option:hover {
+            background: #00ff88;
+            color: #0e0e0e;
         }
 
         .price-display {
@@ -458,10 +479,39 @@
 
     <div class="header">
         <div class="header-left">
-            <div class="symbol-info">
-                <div class="symbol-name">XAUUSD</div>
-                <div class="symbol-description">Gold vs US Dollar</div>
-            </div>
+            <select class="symbol-selector" id="symbolSelector" onchange="changeSymbol()">
+                <optgroup label="Precious Metals">
+                    <option value="XAUUSD" selected>XAUUSD - Gold</option>
+                    <option value="XAGUSD">XAGUSD - Silver</option>
+                </optgroup>
+                <optgroup label="Major Pairs">
+                    <option value="EURUSD">EURUSD - Euro / US Dollar</option>
+                    <option value="GBPUSD">GBPUSD - British Pound / US Dollar</option>
+                    <option value="USDJPY">USDJPY - US Dollar / Japanese Yen</option>
+                    <option value="USDCHF">USDCHF - US Dollar / Swiss Franc</option>
+                    <option value="AUDUSD">AUDUSD - Australian Dollar / US Dollar</option>
+                    <option value="USDCAD">USDCAD - US Dollar / Canadian Dollar</option>
+                    <option value="NZDUSD">NZDUSD - New Zealand Dollar / US Dollar</option>
+                </optgroup>
+                <optgroup label="Minor Pairs">
+                    <option value="EURGBP">EURGBP - Euro / British Pound</option>
+                    <option value="EURJPY">EURJPY - Euro / Japanese Yen</option>
+                    <option value="GBPJPY">GBPJPY - British Pound / Japanese Yen</option>
+                    <option value="EURCHF">EURCHF - Euro / Swiss Franc</option>
+                    <option value="EURAUD">EURAUD - Euro / Australian Dollar</option>
+                    <option value="EURCAD">EURCAD - Euro / Canadian Dollar</option>
+                    <option value="GBPCHF">GBPCHF - British Pound / Swiss Franc</option>
+                    <option value="GBPAUD">GBPAUD - British Pound / Australian Dollar</option>
+                    <option value="GBPCAD">GBPCAD - British Pound / Canadian Dollar</option>
+                    <option value="AUDJPY">AUDJPY - Australian Dollar / Japanese Yen</option>
+                    <option value="AUDNZD">AUDNZD - Australian Dollar / New Zealand Dollar</option>
+                    <option value="AUDCAD">AUDCAD - Australian Dollar / Canadian Dollar</option>
+                    <option value="AUDCHF">AUDCHF - Australian Dollar / Swiss Franc</option>
+                    <option value="NZDJPY">NZDJPY - New Zealand Dollar / Japanese Yen</option>
+                    <option value="CADJPY">CADJPY - Canadian Dollar / Japanese Yen</option>
+                    <option value="CHFJPY">CHFJPY - Swiss Franc / Japanese Yen</option>
+                </optgroup>
+            </select>
             
             <div class="price-display">
                 <div class="current-price" id="currentPrice">--</div>
