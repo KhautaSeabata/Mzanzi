@@ -6,6 +6,16 @@
 // Gold Symbol Configuration (single symbol only)
 const GOLD_SYMBOL = 'frxXAUUSD'; // Proven working symbol
 
+// Initialize SMC Analyzer
+let smcAnalyzer = null;
+if (typeof SMCAnalyzer !== 'undefined') {
+    smcAnalyzer = new SMCAnalyzer();
+    console.log('✅ SMC Analyzer initialized');
+}
+
+// Firebase configuration
+const FIREBASE_URL = 'https://mzanzifx-default-rtdb.firebaseio.com';
+
 // Global State
 let canvas, ctx;
 let chartData = [];
@@ -252,6 +262,11 @@ function drawChart() {
         ctx.fillStyle = isGreen ? '#00ff88' : '#ff3366';
         ctx.fillRect(x - bodyW / 2, yTop, bodyW, bodyHeight);
     });
+    
+    // Draw SMC objects
+    if (smcAnalyzer && smcAnalyzer.settings.drawObjects) {
+        smcAnalyzer.drawSMCObjects(ctx, chartData, visible, scroll, candleW, priceToY, padding);
+    }
     
     // Draw price scale
     drawPriceScale(minP - buffer, maxP + buffer, chartH, padding);
@@ -559,6 +574,130 @@ function showLoading() {
 
 function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// ============================================================================
+// SIGNAL GENERATION & DISPLAY
+// ============================================================================
+window.generateSignal = async function() {
+    if (!chartData || chartData.length < 100) {
+        alert('Insufficient data for analysis. Please wait for more candles.');
+        return;
+    }
+    
+    if (!smcAnalyzer) {
+        alert('SMC Analyzer not loaded. Please refresh the page.');
+        return;
+    }
+    
+    console.log('⚡ Generating signal...');
+    
+    const btn = document.getElementById('generateSignalBtn');
+    btn.style.opacity = '0.5';
+    btn.style.pointerEvents = 'none';
+    
+    try {
+        // Run SMC analysis
+        const signal = smcAnalyzer.analyze(chartData, currentTimeframe);
+        
+        if (signal) {
+            // Display signal
+            displaySignal(signal);
+            
+            // Save to Firebase
+            await saveSignalToFirebase(signal);
+            
+            console.log('✅ Signal generated:', signal.bias, signal.confidence + '%');
+        } else {
+            alert('No high-confidence signal detected at this time.\n\nConfidence threshold: 70%');
+        }
+    } catch (error) {
+        console.error('❌ Error generating signal:', error);
+        alert('Error generating signal. Check console for details.');
+    } finally {
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+    }
+};
+
+window.toggleAutoAnalyze = function() {
+    if (!smcAnalyzer) return;
+    
+    const btn = document.getElementById('autoAnalyzeBtn');
+    
+    if (smcAnalyzer.settings.autoAnalyze) {
+        smcAnalyzer.stopAutoAnalysis();
+        btn.classList.remove('active');
+        console.log('⏹️ Auto-analyze stopped');
+    } else {
+        smcAnalyzer.startAutoAnalysis(chartData, currentTimeframe, (signal) => {
+            console.log('🔔 Auto-signal detected!');
+            displaySignal(signal);
+            saveSignalToFirebase(signal);
+        });
+        btn.classList.add('active');
+        console.log('▶️ Auto-analyze started');
+    }
+};
+
+function displaySignal(signal) {
+    const panel = document.getElementById('signalPanel');
+    
+    // Update bias
+    const biasEl = document.getElementById('signalBias');
+    biasEl.textContent = signal.bias.toUpperCase();
+    biasEl.className = 'signal-bias ' + signal.bias;
+    
+    // Update confidence
+    document.getElementById('signalConfidence').textContent = signal.confidence + '% Confidence';
+    
+    // Update levels
+    document.getElementById('signalEntry').textContent = signal.entry;
+    document.getElementById('signalTP1').textContent = signal.tp1;
+    document.getElementById('signalTP2').textContent = signal.tp2;
+    document.getElementById('signalTP3').textContent = signal.tp3;
+    document.getElementById('signalSL').textContent = signal.sl;
+    
+    // Update meta
+    document.getElementById('signalRR').textContent = signal.rr;
+    document.getElementById('signalVol').textContent = signal.volatility || '--';
+    document.getElementById('signalZone').textContent = signal.zone.toUpperCase();
+    
+    // Update reasons
+    const reasonsEl = document.getElementById('signalReasons');
+    if (signal.reasons && signal.reasons.length > 0) {
+        reasonsEl.innerHTML = signal.reasons.map(r => `• ${r}`).join('<br>');
+    } else {
+        reasonsEl.innerHTML = 'Technical analysis complete';
+    }
+    
+    // Show panel
+    panel.classList.remove('hidden');
+}
+
+window.closeSignal = function() {
+    document.getElementById('signalPanel').classList.add('hidden');
+};
+
+async function saveSignalToFirebase(signal) {
+    try {
+        const response = await fetch(`${FIREBASE_URL}/signals.json`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(signal)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Signal saved to Firebase:', data.name);
+        } else {
+            console.error('❌ Failed to save signal');
+        }
+    } catch (error) {
+        console.error('❌ Error saving to Firebase:', error);
+    }
 }
 
 console.log('🏅 Gold Trading Terminal - Using Proven Code Structure');
