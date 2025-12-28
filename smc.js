@@ -54,13 +54,13 @@ class SMCAnalyzer {
     // ========================================================================
     // MAIN ANALYSIS FUNCTION
     // ========================================================================
-    analyze(chartData, currentTimeframe) {
+    analyze(chartData, currentTimeframe, symbol = 'XAUUSD') {
         if (!chartData || chartData.length < 100) {
             console.log('⚠️ Insufficient data for analysis');
             return null;
         }
 
-        console.log('🔍 Starting SMC Analysis...');
+        console.log(`🔍 Starting SMC Analysis for ${symbol}...`);
         
         const currentTime = chartData[chartData.length - 1].x;
         const keepDuration = currentTimeframe * 150 * 1000;
@@ -86,7 +86,7 @@ class SMCAnalyzer {
         this.checkFVGFills(chartData);
         
         // Generate signal
-        const signal = this.generateSignal(chartData, currentTimeframe);
+        const signal = this.generateSignal(chartData, currentTimeframe, symbol);
         
         console.log('✅ SMC Analysis Complete');
         console.log(`📊 Market Structure: ${this.smcData.marketStructure}`);
@@ -732,7 +732,7 @@ class SMCAnalyzer {
     // ========================================================================
     // SIGNAL GENERATION
     // ========================================================================
-    generateSignal(chartData, timeframe) {
+    generateSignal(chartData, timeframe, symbol = 'XAUUSD') {
         const currentPrice = chartData[chartData.length - 1].c;
         let bias = 'neutral';
         let confidence = 50;
@@ -838,16 +838,18 @@ class SMCAnalyzer {
             return null;
         }
         
+        const precision = this.getPrecision(currentPrice);
+        
         const signal = {
             id: Date.now() + Math.random(),
-            symbol: 'XAUUSD',
+            symbol: symbol,
             bias: bias,
             timeframe: this.getTimeframeLabel(timeframe),
-            entry: entry.toFixed(2),
-            tp1: tp1.toFixed(2),
-            tp2: tp2.toFixed(2),
-            tp3: tp3.toFixed(2),
-            sl: sl.toFixed(2),
+            entry: entry.toFixed(precision),
+            tp1: tp1.toFixed(precision),
+            tp2: tp2.toFixed(precision),
+            tp3: tp3.toFixed(precision),
+            sl: sl.toFixed(precision),
             rr: riskReward.toFixed(2),
             confidence: Math.min(98, confidence),
             marketStructure: this.smcData.marketStructure,
@@ -865,6 +867,14 @@ class SMCAnalyzer {
     // ========================================================================
     // HELPER FUNCTIONS
     // ========================================================================
+    getPrecision(price) {
+        // Determine precision based on price magnitude
+        if (price < 1) return 5;
+        if (price < 10) return 4;
+        if (price < 100) return 3;
+        if (price < 1000) return 2;
+        return 2;
+    }
     calculateOrderBlockStrength(chartData, index) {
         const candle = chartData[index];
         const range = candle.h - candle.l;
@@ -966,17 +976,17 @@ class SMCAnalyzer {
     // ========================================================================
     // AUTO ANALYSIS
     // ========================================================================
-    startAutoAnalysis(chartData, timeframe, callback) {
+    startAutoAnalysis(chartData, timeframe, symbol, callback) {
         if (this.analysisInterval) {
             clearInterval(this.analysisInterval);
         }
         
         this.settings.autoAnalyze = true;
-        console.log('🔄 Auto-analysis started');
+        console.log(`🔄 Auto-analysis started for ${symbol}`);
         
         // Analyze every 30 seconds
         this.analysisInterval = setInterval(() => {
-            const signal = this.analyze(chartData, timeframe);
+            const signal = this.analyze(chartData, timeframe, symbol);
             if (signal && callback) {
                 callback(signal);
             }
