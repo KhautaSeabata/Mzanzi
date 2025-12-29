@@ -1,0 +1,19 @@
+services:
+  # Main Web Service (Flask + Trading Terminal)
+  - type: web
+    name: mzanzifx-trading-terminal
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn web:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FIREBASE_DATABASE_URL
+        value: https://mzanzifx-default-rtdb.firebaseio.com
+      - key: PYTHONUNBUFFERED
+        value: 1
+    autoDeploy: true
+    branch: main
