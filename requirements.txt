@@ -1,1 +1,19 @@
+# Flask Web Server
+Flask==3.0.0
+Flask-CORS==4.0.0
+gunicorn==21.2.0
+Werkzeug==3.0.1
 
+# Web Scraping
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Firebase Integration (optional - comment out if causing issues)
+# firebase-admin==6.2.0
+
+# Utilities
+python-dotenv==1.0.0
+
+# Production Server Enhancement
+gevent==23.9.1
