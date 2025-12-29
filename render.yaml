@@ -5,32 +5,31 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: npm ci --only=production
+    startCommand: node server.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: FIREBASE_DATABASE_URL
         value: https://mzanzifx-default-rtdb.firebaseio.com
     autoDeploy: true
     branch: main
 
-  # Python Scraper (Background Worker) - Optional
-  # Uncomment if you want to run the scraper on Render
+  # Python Scraper (Background Worker) - DISABLED BY DEFAULT
+  # Uncomment these lines only if you want to run the scraper on Render
+  # Make sure requirements.txt is in a separate folder or rename it
   # - type: worker
   #   name: mzanzifx-scraper
   #   runtime: python
   #   region: oregon
   #   plan: free
-  #   buildCommand: pip install -r requirements.txt
+  #   buildCommand: pip install -r scraper-requirements.txt
   #   startCommand: python scraper.py
   #   envVars:
   #     - key: FIREBASE_DATABASE_URL
   #       value: https://mzanzifx-default-rtdb.firebaseio.com
   #     - key: FIREBASE_SERVICE_ACCOUNT
-  #       sync: false  # Set this manually in Render dashboard
+  #       sync: false
   #   autoDeploy: true
   #   branch: main
